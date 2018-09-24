@@ -8,10 +8,10 @@ const hyphenate = str => {
   return str.replace(hyphenateRE, '-$1').toLowerCase()
 };
 
-function getInitialProps (propsList) {
+function getInitialProps (propsList, currProps) {
   const res = {};
   propsList.forEach(key => {
-    res[key] = undefined;
+    res[key] = currProps[key] || undefined;
   });
   return res
 }
@@ -154,9 +154,14 @@ function wrap (Vue, Component) {
     isInitialized = true;
   }
 
-  function syncAttribute (el, key) {
+  function syncAttribute (el, key, syncJsProp) {
     const camelized = camelize(key);
-    const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
+    let value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
+
+    if (syncJsProp) {
+      value = el[key] !== undefined ? el[key] : value;
+    }
+
     el._wrapper.props[camelized] = convertAttributeValue(
       value,
       key,
@@ -166,13 +171,13 @@ function wrap (Vue, Component) {
 
   class CustomElement extends HTMLElement {
     constructor () {
-      super();
-      this.attachShadow({ mode: 'open' });
+      const self = super();
+      self.attachShadow({ mode: 'open' });
 
-      const wrapper = this._wrapper = new Vue({
+      const wrapper = self._wrapper = new Vue({
         name: 'shadow-root',
-        customElement: this,
-        shadowRoot: this.shadowRoot,
+        customElement: self,
+        shadowRoot: self.shadowRoot,
         data () {
           return {
             props: {},
@@ -192,8 +197,8 @@ function wrap (Vue, Component) {
         let hasChildrenChange = false;
         for (let i = 0; i < mutations.length; i++) {
           const m = mutations[i];
-          if (isInitialized && m.type === 'attributes' && m.target === this) {
-            syncAttribute(this, m.attributeName);
+          if (isInitialized && m.type === 'attributes' && m.target === self) {
+            syncAttribute(self, m.attributeName);
           } else {
             hasChildrenChange = true;
           }
@@ -201,11 +206,11 @@ function wrap (Vue, Component) {
         if (hasChildrenChange) {
           wrapper.slotChildren = Object.freeze(toVNodes(
             wrapper.$createElement,
-            this.childNodes
+            self.childNodes
           ));
         }
       });
-      observer.observe(this, {
+      observer.observe(self, {
         childList: true,
         subtree: true,
         characterData: true,
@@ -222,9 +227,9 @@ function wrap (Vue, Component) {
       if (!wrapper._isMounted) {
         // initialize attributes
         const syncInitialAttributes = () => {
-          wrapper.props = getInitialProps(camelizedPropsList);
+          wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
           hyphenatedPropsList.forEach(key => {
-            syncAttribute(this, key);
+            syncAttribute(this, key, true);
           });
         };
 
