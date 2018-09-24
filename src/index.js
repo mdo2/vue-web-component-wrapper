@@ -68,9 +68,14 @@ export default function wrap (Vue, Component) {
     isInitialized = true
   }
 
-  function syncAttribute (el, key) {
+  function syncAttribute (el, key, syncJsProp) {
     const camelized = camelize(key)
-    const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined
+    let value = el.hasAttribute(key) ? el.getAttribute(key) : undefined
+
+    if (syncJsProp) {
+      value = el[key] !== undefined ? el[key] : value
+    }
+
     el._wrapper.props[camelized] = convertAttributeValue(
       value,
       key,
@@ -136,9 +141,9 @@ export default function wrap (Vue, Component) {
       if (!wrapper._isMounted) {
         // initialize attributes
         const syncInitialAttributes = () => {
-          wrapper.props = getInitialProps(camelizedPropsList)
+          wrapper.props = getInitialProps(camelizedPropsList, wrapper.props)
           hyphenatedPropsList.forEach(key => {
-            syncAttribute(this, key)
+            syncAttribute(this, key, true)
           })
         }
 

@@ -8,10 +8,10 @@ export const hyphenate = str => {
   return str.replace(hyphenateRE, '-$1').toLowerCase()
 }
 
-export function getInitialProps (propsList) {
+export function getInitialProps (propsList, currProps) {
   const res = {}
   propsList.forEach(key => {
-    res[key] = undefined
+    res[key] = currProps[key] || undefined
   })
   return res
 }
