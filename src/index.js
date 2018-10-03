@@ -6,7 +6,9 @@ import {
   injectHook,
   getInitialProps,
   createCustomEvent,
-  convertAttributeValue
+  convertAttributeValue,
+  getNodeAttributes,
+  isIgnoredAttribute
 } from './utils.js'
 
 export default function wrap (Vue, Component) {
@@ -68,7 +70,7 @@ export default function wrap (Vue, Component) {
     isInitialized = true
   }
 
-  function syncAttribute (el, key, syncJsProp) {
+  function syncProperty (el, key, syncJsProp) {
     const camelized = camelize(key)
     let value = el.hasAttribute(key) ? el.getAttribute(key) : undefined
 
@@ -83,6 +85,24 @@ export default function wrap (Vue, Component) {
     )
   }
 
+  function syncAttribute (el, key) {
+    if (isIgnoredAttribute(key) || hyphenatedPropsList.indexOf(key) !== -1) {
+      return
+    }
+
+    const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined
+    const wrapper = el._wrapper
+    wrapper._update(Object.assign({}, wrapper._vnode, {
+      data: Object.assign({}, wrapper._vnode.data, {
+        attrs: Object.assign(
+          {},
+          wrapper._vnode.data.attrs,
+          { [key]: value }
+        )
+      })
+    }), false)
+  }
+
   class CustomElement extends HTMLElement {
     constructor () {
       const self = super()
@@ -90,12 +110,14 @@ export default function wrap (Vue, Component) {
 
       const wrapper = self._wrapper = new Vue({
         name: 'shadow-root',
+        inheritAttrs: false,
         customElement: self,
         shadowRoot: self.shadowRoot,
         data () {
           return {
             props: {},
-            slotChildren: []
+            slotChildren: [],
+            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
           }
         },
         render (h) {
@@ -112,7 +134,11 @@ export default function wrap (Vue, Component) {
         for (let i = 0; i < mutations.length; i++) {
           const m = mutations[i]
           if (isInitialized && m.type === 'attributes' && m.target === self) {
-            syncAttribute(self, m.attributeName)
+            if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {
+              syncProperty(self, m.attributeName)
+            } else {
+              syncAttribute(self, m.attributeName)
+            }
           } else {
             hasChildrenChange = true
           }
@@ -140,15 +166,15 @@ export default function wrap (Vue, Component) {
       const wrapper = this._wrapper
       if (!wrapper._isMounted) {
         // initialize attributes
-        const syncInitialAttributes = () => {
+        const syncInitialProperties = () => {
           wrapper.props = getInitialProps(camelizedPropsList, wrapper.props)
           hyphenatedPropsList.forEach(key => {
-            syncAttribute(this, key, true)
+            syncProperty(this, key, true)
           })
         }
 
         if (isInitialized) {
-          syncInitialAttributes()
+          syncInitialProperties()
         } else {
           // async & unresolved
           Component().then(resolved => {
@@ -156,7 +182,7 @@ export default function wrap (Vue, Component) {
               resolved = resolved.default
             }
             initialize(resolved)
-            syncInitialAttributes()
+            syncInitialProperties()
           })
         }
         // initialize children

@@ -38,6 +38,12 @@ export function createCustomEvent (name, args) {
   })
 }
 
+export function isIgnoredAttribute (attr) {
+  return ['class', 'style', 'id', 'key', 'ref', 'slot', 'slot-scope', 'is'].indexOf(
+    attr
+  ) !== -1
+}
+
 const isBoolean = val => /function Boolean/.test(String(val))
 const isNumber = val => /function Number/.test(String(val))
 
@@ -71,7 +77,7 @@ function toVNode (h, node) {
     return node.data.trim() ? node.data : null
   } else if (node.nodeType === 1) {
     const data = {
-      attrs: getAttributes(node),
+      attrs: getNodeAttributes(node),
       domProps: {
         innerHTML: node.innerHTML
       }
@@ -86,11 +92,21 @@ function toVNode (h, node) {
   }
 }
 
-function getAttributes (node) {
+export function getNodeAttributes (node, ignoreAttributes, ignoreReserved) {
   const res = {}
   for (let i = 0, l = node.attributes.length; i < l; i++) {
     const attr = node.attributes[i]
-    res[attr.nodeName] = attr.nodeValue
+    const name = attr.name || attr.nodeName
+    const value = attr.value || attr.nodeValue
+
+    if (
+      (ignoreAttributes && ignoreAttributes.indexOf(name) !== -1) &&
+      (ignoreReserved && isIgnoredAttribute(name))
+    ) {
+      continue
+    }
+
+    res[name] = value
   }
   return res
 }
