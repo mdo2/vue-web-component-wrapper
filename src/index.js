@@ -123,7 +123,8 @@ export default function wrap (Vue, Component) {
         render (h) {
           return h(Component, {
             ref: 'inner',
-            props: this.props
+            props: this.props,
+            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
           }, this.slotChildren)
         }
       })
