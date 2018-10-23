@@ -76,17 +76,11 @@ function toVNode (h, node) {
   if (node.nodeType === 3) {
     return node.data.trim() ? node.data : null
   } else if (node.nodeType === 1) {
-    const data = {
-      attrs: getNodeAttributes(node),
-      domProps: {
-        innerHTML: node.innerHTML
-      }
-    };
-    if (data.attrs.slot) {
-      data.slot = data.attrs.slot;
-      delete data.attrs.slot;
-    }
-    return h(node.tagName, data)
+    const slotName = node.getAttribute('slot');
+    return h('slot', slotName ? {
+      slot: slotName,
+      attrs: { name: slotName }
+    } : null)
   } else {
     return null
   }
