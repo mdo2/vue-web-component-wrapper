@@ -11,7 +11,7 @@ import {
   isIgnoredAttribute
 } from './utils.js'
 
-export default function wrap (Vue, Component) {
+export default function wrap (Vue, Component, delegatesFocus) {
   const isAsync = typeof Component === 'function' && !Component.cid
   let isInitialized = false
   let hyphenatedPropsList
@@ -106,7 +106,7 @@ export default function wrap (Vue, Component) {
   class CustomElement extends HTMLElement {
     constructor () {
       const self = super()
-      self.attachShadow({ mode: 'open' })
+      self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus })
 
       const wrapper = self._wrapper = new Vue({
         name: 'shadow-root',

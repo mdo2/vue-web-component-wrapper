@@ -1,6 +1,6 @@
 {
   "name": "@vue/web-component-wrapper",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "wrap a vue component as a web component.",
   "main": "dist/vue-wc-wrapper.js",
   "unpkg": "dist/vue-wc-wrapper.global.js",
@@ -47,15 +47,6 @@
       "browser": true
     },
     "extends": "plugin:vue-libs/recommended"
-  },
-  "gitHooks": {
-    "pre-commit": "lint-staged"
-  },
-  "lint-staged": {
-    "*.js": [
-      "eslint --fix",
-      "git add"
-    ]
   },
   "dependencies": {
     "babel-core": "^6.26.3"
