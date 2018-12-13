@@ -32,8 +32,8 @@ export function callHooks (vm, hook) {
 
 export function createCustomEvent (name, args) {
   return new CustomEvent(name, {
-    bubbles: false,
-    cancelable: false,
+    bubbles: true,
+    cancelable: true,
     detail: args
   })
 }
