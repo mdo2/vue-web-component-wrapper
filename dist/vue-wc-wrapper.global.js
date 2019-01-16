@@ -37,6 +37,7 @@ var wrapVueWebComponent = (function () {
     return new CustomEvent(name, {
       bubbles: true,
       cancelable: true,
+      composed: true,
       detail: args
     })
   }

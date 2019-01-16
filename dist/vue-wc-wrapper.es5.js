@@ -115,6 +115,7 @@ function createCustomEvent(name, args) {
   return new CustomEvent(name, {
     bubbles: true,
     cancelable: true,
+    composed: true,
     detail: args
   });
 }
