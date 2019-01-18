@@ -292,12 +292,12 @@ var wrapVueWebComponent = (function () {
           wrapper.$mount();
           this.shadowRoot.appendChild(wrapper.$el);
         } else {
-          callHooks(this.vueComponent, 'activated');
+          callHooks(this.vueComponent, 'created');
         }
       }
 
       disconnectedCallback () {
-        callHooks(this.vueComponent, 'deactivated');
+        callHooks(this.vueComponent, 'destroyed');
       }
     }
 

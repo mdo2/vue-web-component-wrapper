@@ -388,13 +388,13 @@ function wrap(Vue, Component, delegatesFocus) {
           wrapper.$mount();
           this.shadowRoot.appendChild(wrapper.$el);
         } else {
-          callHooks(this.vueComponent, 'activated');
+          callHooks(this.vueComponent, 'created');
         }
       }
     }, {
       key: "disconnectedCallback",
       value: function disconnectedCallback() {
-        callHooks(this.vueComponent, 'deactivated');
+        callHooks(this.vueComponent, 'destroyed');
       }
     }, {
       key: "vueComponent",
