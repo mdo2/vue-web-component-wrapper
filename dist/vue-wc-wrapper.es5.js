@@ -302,28 +302,16 @@ function wrap(Vue, Component, delegatesFocus) {
         mode: 'open',
         delegatesFocus: delegatesFocus
       });
-      var wrapper = self._wrapper = new Vue({
-        name: 'shadow-root',
-        inheritAttrs: false,
-        customElement: self,
-        shadowRoot: self.shadowRoot,
-        data: function data() {
-          return {
-            props: {},
-            slotChildren: [],
-            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-          };
-        },
-        render: function render(h) {
-          return h(Component, {
-            ref: 'inner',
-            props: this.props,
-            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-          }, this.slotChildren);
-        }
-      }); // Use MutationObserver to react to future attribute & slot content change
+      self.hasAttribute('keep-alive');
+
+      var wrapper = _this3._createWrapper(); // Use MutationObserver to react to future attribute & slot content change
+
 
       var observer = new MutationObserver(function (mutations) {
+        if (!_this3._wrapper) {
+          return;
+        }
+
         var hasChildrenChange = false;
 
         for (var i = 0; i < mutations.length; i++) {
@@ -354,9 +342,38 @@ function wrap(Vue, Component, delegatesFocus) {
     }
 
     _createClass(CustomElement, [{
+      key: "_createWrapper",
+      value: function _createWrapper() {
+        var wrapper = self._wrapper = new Vue({
+          name: 'shadow-root',
+          inheritAttrs: false,
+          customElement: self,
+          shadowRoot: self.shadowRoot,
+          data: function data() {
+            return {
+              props: {},
+              slotChildren: [],
+              attrs: getNodeAttributes(self, hyphenatedPropsList, true)
+            };
+          },
+          render: function render(h) {
+            return h(Component, {
+              ref: 'inner',
+              props: this.props,
+              attrs: getNodeAttributes(self, hyphenatedPropsList, true)
+            }, this.slotChildren);
+          }
+        });
+        return wrapper;
+      }
+    }, {
       key: "connectedCallback",
       value: function connectedCallback() {
         var _this4 = this;
+
+        if (!this._wrapper) {
+          this._wrapper = this._createWrapper();
+        }
 
         var wrapper = this._wrapper;
 
@@ -388,13 +405,22 @@ function wrap(Vue, Component, delegatesFocus) {
           wrapper.$mount();
           this.shadowRoot.appendChild(wrapper.$el);
         } else {
-          callHooks(this.vueComponent, 'created');
+          if (this.hasAttribute('keep-alive')) {
+            callHooks(this.vueComponent, 'activated');
+          } else {
+            callHooks(this.vueComponent, 'created');
+          }
         }
       }
     }, {
       key: "disconnectedCallback",
       value: function disconnectedCallback() {
-        callHooks(this.vueComponent, 'destroyed');
+        if (this.hasAttribute('keep-alive')) {
+          callHooks(this.vueComponent, 'deactivated');
+        } else {
+          callHooks(this.vueComponent, 'destroyed');
+          this._wrapper = null;
+        }
       }
     }, {
       key: "vueComponent",

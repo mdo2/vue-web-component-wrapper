@@ -203,29 +203,15 @@ function wrap (Vue, Component, delegatesFocus) {
       const self = super();
       self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus });
 
-      const wrapper = self._wrapper = new Vue({
-        name: 'shadow-root',
-        inheritAttrs: false,
-        customElement: self,
-        shadowRoot: self.shadowRoot,
-        data () {
-          return {
-            props: {},
-            slotChildren: [],
-            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-          }
-        },
-        render (h) {
-          return h(Component, {
-            ref: 'inner',
-            props: this.props,
-            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-          }, this.slotChildren)
-        }
-      });
+      self.hasAttribute('keep-alive');
+
+      const wrapper = this._createWrapper();
 
       // Use MutationObserver to react to future attribute & slot content change
       const observer = new MutationObserver(mutations => {
+        if (!this._wrapper) {
+          return
+        }
         let hasChildrenChange = false;
         for (let i = 0; i < mutations.length; i++) {
           const m = mutations[i];
@@ -254,11 +240,38 @@ function wrap (Vue, Component, delegatesFocus) {
       });
     }
 
+    _createWrapper() {
+      const wrapper = self._wrapper = new Vue({
+        name: 'shadow-root',
+        inheritAttrs: false,
+        customElement: self,
+        shadowRoot: self.shadowRoot,
+        data () {
+          return {
+            props: {},
+            slotChildren: [],
+            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
+          }
+        },
+        render (h) {
+          return h(Component, {
+            ref: 'inner',
+            props: this.props,
+            attrs: getNodeAttributes(self, hyphenatedPropsList, true)
+          }, this.slotChildren)
+        }
+      });
+      return wrapper
+    }
+
     get vueComponent () {
       return this._wrapper.$refs.inner
     }
 
     connectedCallback () {
+      if (!this._wrapper) {
+        this._wrapper = this._createWrapper();
+      }
       const wrapper = this._wrapper;
       if (!wrapper._isMounted) {
         // initialize attributes
@@ -289,12 +302,21 @@ function wrap (Vue, Component, delegatesFocus) {
         wrapper.$mount();
         this.shadowRoot.appendChild(wrapper.$el);
       } else {
-        callHooks(this.vueComponent, 'created');
+        if (this.hasAttribute('keep-alive')) {
+          callHooks(this.vueComponent, 'activated');
+        } else {
+          callHooks(this.vueComponent, 'created');
+        }
       }
     }
 
     disconnectedCallback () {
-      callHooks(this.vueComponent, 'destroyed');
+      if (this.hasAttribute('keep-alive')) {
+        callHooks(this.vueComponent, 'deactivated');
+      } else {
+        callHooks(this.vueComponent, 'destroyed');
+        this._wrapper = null;
+      }
     }
   }
 
