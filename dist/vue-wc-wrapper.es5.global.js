@@ -246,19 +246,6 @@ var wrapVueWebComponent = (function () {
         camelizedPropsList.forEach(function (key) {
           _this2.$root.props[key] = _this2[key];
         });
-      }); // proxy props as Element properties
-
-      camelizedPropsList.forEach(function (key) {
-        Object.defineProperty(CustomElement.prototype, key, {
-          get: function get() {
-            return this._wrapper.props[key];
-          },
-          set: function set(newVal) {
-            this._wrapper.props[key] = newVal;
-          },
-          enumerable: false,
-          configurable: true
-        });
       });
       isInitialized = true;
     }
@@ -347,7 +334,8 @@ var wrapVueWebComponent = (function () {
       _createClass(CustomElement, [{
         key: "_createWrapper",
         value: function _createWrapper() {
-          var wrapper = self._wrapper = new Vue({
+          var self = this;
+          var wrapper = this._wrapper = new Vue({
             name: 'shadow-root',
             inheritAttrs: false,
             customElement: self,
@@ -362,10 +350,23 @@ var wrapVueWebComponent = (function () {
             render: function render(h) {
               return h(Component, {
                 ref: 'inner',
-                props: this.props,
+                props: self.props,
                 attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-              }, this.slotChildren);
+              }, self.slotChildren);
             }
+          }); // proxy props as Element properties
+
+          camelizedPropsList.forEach(function (key) {
+            Object.defineProperty(CustomElement.prototype, key, {
+              get: function get() {
+                return this._wrapper.props[key];
+              },
+              set: function set(newVal) {
+                this._wrapper.props[key] = newVal;
+              },
+              enumerable: false,
+              configurable: true
+            });
           });
           return wrapper;
         }
@@ -421,7 +422,8 @@ var wrapVueWebComponent = (function () {
           if (this.hasAttribute('keep-alive')) {
             callHooks(this.vueComponent, 'deactivated');
           } else {
-            callHooks(this.vueComponent, 'destroyed');
+            this._wrapper.$destroy();
+
             this._wrapper = null;
           }
         }

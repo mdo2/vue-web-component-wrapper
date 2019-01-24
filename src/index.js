@@ -53,20 +53,6 @@ export default function wrap (Vue, Component, delegatesFocus) {
       })
     })
 
-    // proxy props as Element properties
-    camelizedPropsList.forEach(key => {
-      Object.defineProperty(CustomElement.prototype, key, {
-        get () {
-          return this._wrapper.props[key]
-        },
-        set (newVal) {
-          this._wrapper.props[key] = newVal
-        },
-        enumerable: false,
-        configurable: true
-      })
-    })
-
     isInitialized = true
   }
 
@@ -146,7 +132,8 @@ export default function wrap (Vue, Component, delegatesFocus) {
     }
 
     _createWrapper() {
-      const wrapper = self._wrapper = new Vue({
+      const self = this;
+      const wrapper = this._wrapper = new Vue({
         name: 'shadow-root',
         inheritAttrs: false,
         customElement: self,
@@ -161,10 +148,24 @@ export default function wrap (Vue, Component, delegatesFocus) {
         render (h) {
           return h(Component, {
             ref: 'inner',
-            props: this.props,
+            props: self.props,
             attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-          }, this.slotChildren)
+          }, self.slotChildren)
         }
+      })
+
+      // proxy props as Element properties
+      camelizedPropsList.forEach(key => {
+        Object.defineProperty(CustomElement.prototype, key, {
+          get () {
+            return this._wrapper.props[key]
+          },
+          set (newVal) {
+            this._wrapper.props[key] = newVal
+          },
+          enumerable: false,
+          configurable: true
+        })
       })
       return wrapper
     }
@@ -219,7 +220,7 @@ export default function wrap (Vue, Component, delegatesFocus) {
       if (this.hasAttribute('keep-alive')) {
         callHooks(this.vueComponent, 'deactivated')
       } else {
-        callHooks(this.vueComponent, 'destroyed')
+        this._wrapper.$destroy();
         this._wrapper = null
       }
     }
