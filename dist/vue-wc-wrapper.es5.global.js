@@ -246,6 +246,23 @@ var wrapVueWebComponent = (function () {
         camelizedPropsList.forEach(function (key) {
           _this2.$root.props[key] = _this2[key];
         });
+      }); // proxy props as Element properties
+
+      camelizedPropsList.forEach(function (key) {
+        Object.defineProperty(CustomElement.prototype, key, {
+          get: function get() {
+            return this._wrapper && this._wrapper.props[key];
+          },
+          set: function set(newVal) {
+            if (this._wrapper) {
+              this._wrapper.props[key] = newVal;
+            }
+
+            this.props[key] = newVal;
+          },
+          enumerable: false,
+          configurable: true
+        });
       });
       isInitialized = true;
     }
@@ -255,7 +272,11 @@ var wrapVueWebComponent = (function () {
       var value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
 
       if (syncJsProp) {
-        value = el[key] !== undefined ? el[key] : value;
+        if (el.props && el.props[key] !== undefined) {
+          value = el.props[key];
+        } else {
+          value = el[key] !== undefined ? el[key] : value;
+        }
       }
 
       el._wrapper.props[camelized] = convertAttributeValue(value, key, camelizedPropsMap[camelized]);
@@ -288,6 +309,7 @@ var wrapVueWebComponent = (function () {
 
         var self = _this3 = _possibleConstructorReturn(this, _getPrototypeOf(CustomElement).call(this));
 
+        _this3.props = {};
         self.attachShadow({
           mode: 'open',
           delegatesFocus: delegatesFocus
@@ -350,23 +372,10 @@ var wrapVueWebComponent = (function () {
             render: function render(h) {
               return h(Component, {
                 ref: 'inner',
-                props: self.props,
+                props: this.props,
                 attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-              }, self.slotChildren);
+              }, this.slotChildren);
             }
-          }); // proxy props as Element properties
-
-          camelizedPropsList.forEach(function (key) {
-            Object.defineProperty(CustomElement.prototype, key, {
-              get: function get() {
-                return this._wrapper.props[key];
-              },
-              set: function set(newVal) {
-                this._wrapper.props[key] = newVal;
-              },
-              enumerable: false,
-              configurable: true
-            });
           });
           return wrapper;
         }
@@ -424,7 +433,15 @@ var wrapVueWebComponent = (function () {
           } else {
             this._wrapper.$destroy();
 
-            this._wrapper = null;
+            this._wrapper = null; // delete all children except for the first one (the style tag)
+
+            var children = this.shadowRoot.childNodes;
+
+            for (var i = 0; i < children.length; i++) {
+              if (children[i].tagName !== "STYLE") {
+                this.shadowRoot.removeChild(children[i]);
+              }
+            }
           }
         }
       }, {

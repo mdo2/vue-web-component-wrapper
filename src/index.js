@@ -53,6 +53,23 @@ export default function wrap (Vue, Component, delegatesFocus) {
       })
     })
 
+    // proxy props as Element properties
+    camelizedPropsList.forEach(key => {
+      Object.defineProperty(CustomElement.prototype, key, {
+        get () {
+          return this._wrapper && this._wrapper.props[key]
+        },
+        set (newVal) {
+          if (this._wrapper) {
+            this._wrapper.props[key] = newVal
+          }
+          this.props[key] = newVal
+        },
+        enumerable: false,
+        configurable: true
+      })
+    })
+
     isInitialized = true
   }
 
@@ -61,7 +78,11 @@ export default function wrap (Vue, Component, delegatesFocus) {
     let value = el.hasAttribute(key) ? el.getAttribute(key) : undefined
 
     if (syncJsProp) {
-      value = el[key] !== undefined ? el[key] : value
+      if (el.props && el.props[key] !== undefined) {
+        value = el.props[key]
+      } else {
+        value = el[key] !== undefined ? el[key] : value
+      }
     }
 
     el._wrapper.props[camelized] = convertAttributeValue(
@@ -92,6 +113,7 @@ export default function wrap (Vue, Component, delegatesFocus) {
   class CustomElement extends HTMLElement {
     constructor () {
       const self = super()
+      this.props = {}
       self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus })
 
       self.hasAttribute('keep-alive')
@@ -148,24 +170,10 @@ export default function wrap (Vue, Component, delegatesFocus) {
         render (h) {
           return h(Component, {
             ref: 'inner',
-            props: self.props,
+            props: this.props,
             attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-          }, self.slotChildren)
+          }, this.slotChildren)
         }
-      })
-
-      // proxy props as Element properties
-      camelizedPropsList.forEach(key => {
-        Object.defineProperty(CustomElement.prototype, key, {
-          get () {
-            return this._wrapper.props[key]
-          },
-          set (newVal) {
-            this._wrapper.props[key] = newVal
-          },
-          enumerable: false,
-          configurable: true
-        })
       })
       return wrapper
     }
@@ -222,6 +230,14 @@ export default function wrap (Vue, Component, delegatesFocus) {
       } else {
         this._wrapper.$destroy();
         this._wrapper = null
+
+        // delete all children except for the first one (the style tag)
+        const children = this.shadowRoot.childNodes
+        for (let i = 0; i < children.length; i++) {
+          if (children[i].tagName !== "STYLE") {
+            this.shadowRoot.removeChild(children[i])
+          }
+        }
       }
     }
   }
