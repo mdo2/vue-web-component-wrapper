@@ -66,25 +66,24 @@ function convertAttributeValue (value, name, { type } = {}) {
 }
 
 function toVNodes (h, children) {
-  const res = [];
+  let unnamed = false;
+  const named = {};
   for (let i = 0, l = children.length; i < l; i++) {
-    res.push(toVNode(h, children[i]));
+    const childSlot = children[i].getAttribute && children[i].getAttribute('slot');
+    if (childSlot && !named[childSlot]) {
+      named[childSlot] = h('slot', {
+        slot: childSlot,
+        attrs: { name: childSlot }
+      });
+    } else if (!childSlot && !unnamed) {
+      unnamed = h('slot', null);
+    }
+  }
+  const res = Array.from(Object.values(named));
+  if (unnamed) {
+    res.push(unnamed);
   }
   return res
-}
-
-function toVNode (h, node) {
-  if (node.nodeType === 3) {
-    return node.data.trim() ? node.data : null
-  } else if (node.nodeType === 1) {
-    const slotName = node.getAttribute('slot');
-    return h('slot', slotName ? {
-      slot: slotName,
-      attrs: { name: slotName }
-    } : null)
-  } else {
-    return null
-  }
 }
 
 function getNodeAttributes (node, ignoreAttributes, ignoreReserved) {
@@ -210,8 +209,6 @@ function wrap (Vue, Component, delegatesFocus) {
       const self = super();
       this.props = {};
       self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus });
-
-      self.hasAttribute('keep-alive');
 
       const wrapper = this._createWrapper();
 

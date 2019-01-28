@@ -156,31 +156,32 @@ var wrapVueWebComponent = (function () {
     }
   }
   function toVNodes(h, children) {
-    var res = [];
+    var unnamed = false;
+    var named = {};
 
     for (var i = 0, l = children.length; i < l; i++) {
-      res.push(toVNode(h, children[i]));
+      var childSlot = children[i].getAttribute && children[i].getAttribute('slot');
+
+      if (childSlot && !named[childSlot]) {
+        named[childSlot] = h('slot', {
+          slot: childSlot,
+          attrs: {
+            name: childSlot
+          }
+        });
+      } else if (!childSlot && !unnamed) {
+        unnamed = h('slot', null);
+      }
+    }
+
+    var res = Array.from(Object.values(named));
+
+    if (unnamed) {
+      res.push(unnamed);
     }
 
     return res;
   }
-
-  function toVNode(h, node) {
-    if (node.nodeType === 3) {
-      return node.data.trim() ? node.data : null;
-    } else if (node.nodeType === 1) {
-      var slotName = node.getAttribute('slot');
-      return h('slot', slotName ? {
-        slot: slotName,
-        attrs: {
-          name: slotName
-        }
-      } : null);
-    } else {
-      return null;
-    }
-  }
-
   function getNodeAttributes(node, ignoreAttributes, ignoreReserved) {
     var res = {};
 
@@ -314,7 +315,6 @@ var wrapVueWebComponent = (function () {
           mode: 'open',
           delegatesFocus: delegatesFocus
         });
-        self.hasAttribute('keep-alive');
 
         var wrapper = _this3._createWrapper(); // Use MutationObserver to react to future attribute & slot content change
 

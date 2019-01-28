@@ -116,8 +116,6 @@ export default function wrap (Vue, Component, delegatesFocus) {
       this.props = {}
       self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus })
 
-      self.hasAttribute('keep-alive')
-
       const wrapper = this._createWrapper()
 
       // Use MutationObserver to react to future attribute & slot content change
