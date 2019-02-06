@@ -99,6 +99,11 @@ export default function wrap (Vue, Component, delegatesFocus) {
 
     const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined
     const wrapper = el._wrapper
+
+    if (!wrapper || !wrapper._vnode) {
+      return
+    }
+
     wrapper._update(Object.assign({}, wrapper._vnode, {
       data: Object.assign({}, wrapper._vnode.data, {
         attrs: Object.assign(
