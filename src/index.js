@@ -11,7 +11,7 @@ import {
   isIgnoredAttribute
 } from './utils.js'
 
-export default function wrap (Vue, Component, delegatesFocus) {
+export default function wrap (Vue, Component, delegatesFocus, css) {
   const isAsync = typeof Component === 'function' && !Component.cid
   let isInitialized = false
   let hyphenatedPropsList
@@ -119,7 +119,14 @@ export default function wrap (Vue, Component, delegatesFocus) {
     constructor () {
       const self = super()
       this.props = {}
-      self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus })
+      const shadow = self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus })
+      css && css.forEach(promise =>
+        promise.then(res => res.clone().text().then(content => {
+          const style = document.createElement('style')
+          style.appendChild(document.createTextNode(content))
+          shadow.appendChild(style)
+        }))
+      )
 
       const wrapper = this._createWrapper()
 

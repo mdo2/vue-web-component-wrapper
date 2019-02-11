@@ -108,7 +108,7 @@ var wrapVueWebComponent = (function () {
     return res
   }
 
-  function wrap (Vue, Component, delegatesFocus) {
+  function wrap (Vue, Component, delegatesFocus, css) {
     const isAsync = typeof Component === 'function' && !Component.cid;
     let isInitialized = false;
     let hyphenatedPropsList;
@@ -196,6 +196,11 @@ var wrapVueWebComponent = (function () {
 
       const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
       const wrapper = el._wrapper;
+
+      if (!wrapper || !wrapper._vnode) {
+        return
+      }
+
       wrapper._update(Object.assign({}, wrapper._vnode, {
         data: Object.assign({}, wrapper._vnode.data, {
           attrs: Object.assign(
@@ -211,7 +216,14 @@ var wrapVueWebComponent = (function () {
       constructor () {
         const self = super();
         this.props = {};
-        self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus });
+        const shadow = self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus });
+        css && css.forEach(promise =>
+          promise.then(res => res.clone().text().then(content => {
+            const style = document.createElement('style');
+            style.appendChild(document.createTextNode(content));
+            shadow.appendChild(style);
+          }))
+        );
 
         const wrapper = this._createWrapper();
 

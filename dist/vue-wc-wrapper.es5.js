@@ -202,7 +202,7 @@ function _CustomElement() {
 }
 Object.setPrototypeOf(_CustomElement.prototype, HTMLElement.prototype);
 Object.setPrototypeOf(_CustomElement, HTMLElement);
-function wrap(Vue, Component, delegatesFocus) {
+function wrap(Vue, Component, delegatesFocus, css) {
   var isAsync = typeof Component === 'function' && !Component.cid;
   var isInitialized = false;
   var hyphenatedPropsList;
@@ -288,6 +288,10 @@ function wrap(Vue, Component, delegatesFocus) {
     var value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
     var wrapper = el._wrapper;
 
+    if (!wrapper || !wrapper._vnode) {
+      return;
+    }
+
     wrapper._update(Object.assign({}, wrapper._vnode, {
       data: Object.assign({}, wrapper._vnode.data, {
         attrs: Object.assign({}, wrapper._vnode.data.attrs, _defineProperty({}, key, value))
@@ -308,9 +312,18 @@ function wrap(Vue, Component, delegatesFocus) {
       var self = _this3 = _possibleConstructorReturn(this, _getPrototypeOf(CustomElement).call(this));
 
       _this3.props = {};
-      self.attachShadow({
+      var shadow = self.attachShadow({
         mode: 'open',
         delegatesFocus: delegatesFocus
+      });
+      css && css.forEach(function (promise) {
+        return promise.then(function (res) {
+          return res.clone().text().then(function (content) {
+            var style = document.createElement('style');
+            style.appendChild(document.createTextNode(content));
+            shadow.appendChild(style);
+          });
+        });
       });
 
       var wrapper = _this3._createWrapper(); // Use MutationObserver to react to future attribute & slot content change
