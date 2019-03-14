@@ -273,10 +273,10 @@ var wrapVueWebComponent = (function () {
       var value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
 
       if (syncJsProp) {
-        if (el.props && el.props[key] !== undefined) {
-          value = el.props[key];
+        if (el.props && el.props[camelized] !== undefined) {
+          value = el.props[camelized];
         } else {
-          value = el[key] !== undefined ? el[key] : value;
+          value = el[camelized] !== undefined ? el[camelized] : value;
         }
       }
 
