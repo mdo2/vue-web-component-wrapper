@@ -202,6 +202,11 @@ function _CustomElement() {
 }
 Object.setPrototypeOf(_CustomElement.prototype, HTMLElement.prototype);
 Object.setPrototypeOf(_CustomElement, HTMLElement);
+/**
+ * Use ShadyDom.observeChildren to detect children changes
+ * Use customElement attribute change hook to handle attributes
+ */
+
 function wrap(Vue, Component, delegatesFocus, css) {
   var isAsync = typeof Component === 'function' && !Component.cid;
   var isInitialized = false;
@@ -311,6 +316,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
 
       var self = _this3 = _possibleConstructorReturn(this, _getPrototypeOf(CustomElement).call(this));
 
+      _this3._el = self;
       _this3.props = {};
       var shadow = self.attachShadow({
         mode: 'open',
@@ -326,44 +332,88 @@ function wrap(Vue, Component, delegatesFocus, css) {
         });
       });
 
-      var wrapper = _this3._createWrapper(); // Use MutationObserver to react to future attribute & slot content change
+      _this3._createWrapper();
 
+      _this3._createObserver();
 
-      var observer = new MutationObserver(function (mutations) {
-        if (!_this3._wrapper) {
-          return;
-        }
-
-        var hasChildrenChange = false;
-
-        for (var i = 0; i < mutations.length; i++) {
-          var m = mutations[i];
-
-          if (isInitialized && m.type === 'attributes' && m.target === self) {
-            if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {
-              syncProperty(self, m.attributeName);
-            } else {
-              syncAttribute(self, m.attributeName);
-            }
-          } else {
-            hasChildrenChange = true;
-          }
-        }
-
-        if (hasChildrenChange) {
-          wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, self.childNodes));
-        }
-      });
-      observer.observe(self, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: true
-      });
       return _this3;
     }
 
     _createClass(CustomElement, [{
+      key: "_createObserver",
+      value: function _createObserver() {
+        var _this4 = this;
+
+        var wrapper = this._wrapper;
+        var el = this._el;
+        var mutationObserverOptions = {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+          attributeOldValue: true
+        }; // if ShadyDOM is available we use observeChildren to detect children changes
+        // instead of MutationObserver
+
+        if (window.ShadyDOM && !this._shadyDOMObserver) {
+          this._shadyDOMObserver = window.ShadyDOM.observeChildren(el, function (info) {
+            wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes));
+          });
+          mutationObserverOptions = {
+            attributes: true,
+            attributeOldValue: true
+          };
+        } // Use MutationObserver to react to future attribute & slot content change
+
+
+        if (!this.observer) {
+          this.observer = new MutationObserver(function (mutations) {
+            if (!_this4._wrapper) {
+              return;
+            }
+
+            var hasChildrenChange = false;
+
+            for (var i = 0; i < mutations.length; i++) {
+              var m = mutations[i];
+
+              if (isInitialized && m.type === 'attributes' && m.target === el) {
+                if (m.oldValue === el.getAttribute(m.attributeName)) {
+                  console.log('same');
+                  return;
+                }
+
+                if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {
+                  syncProperty(el, m.attributeName);
+                } else {
+                  syncAttribute(el, m.attributeName);
+                }
+              } else {
+                hasChildrenChange = true;
+              }
+            }
+
+            if (hasChildrenChange && !_this4._shadyDOMObserver) {
+              wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes));
+            }
+          });
+          this.observer.observe(el, mutationObserverOptions);
+        }
+      }
+    }, {
+      key: "_destroyObserver",
+      value: function _destroyObserver() {
+        if (this.observer) {
+          this.observer.disconnect();
+          this.observer = null;
+        }
+
+        if (window.ShadyDOM && this._shadyDOMObserver) {
+          window.ShadyDOM.unobserveChildren(this._shadyDOMObserver);
+          this._shadyDOMObserver = null;
+        }
+      }
+    }, {
       key: "_createWrapper",
       value: function _createWrapper() {
         var self = this;
@@ -392,7 +442,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
     }, {
       key: "connectedCallback",
       value: function connectedCallback() {
-        var _this4 = this;
+        var _this5 = this;
 
         if (!this._wrapper) {
           this._wrapper = this._createWrapper();
@@ -405,7 +455,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
           var syncInitialProperties = function syncInitialProperties() {
             wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
             hyphenatedPropsList.forEach(function (key) {
-              syncProperty(_this4, key, true);
+              syncProperty(_this5, key, true);
             });
           };
 
@@ -425,6 +475,9 @@ function wrap(Vue, Component, delegatesFocus, css) {
 
 
           wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, this.childNodes));
+
+          this._createObserver();
+
           wrapper.$mount();
           this.shadowRoot.appendChild(wrapper.$el);
         } else {
@@ -443,7 +496,10 @@ function wrap(Vue, Component, delegatesFocus, css) {
         } else {
           this._wrapper.$destroy();
 
-          this._wrapper = null; // delete all children except for the first one (the style tag)
+          this._wrapper = null;
+
+          this._destroyObserver(); // delete all children except for the first one (the style tag)
+
 
           var children = this.shadowRoot.childNodes;
 
