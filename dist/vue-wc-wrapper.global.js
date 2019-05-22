@@ -108,11 +108,6 @@ var wrapVueWebComponent = (function () {
     return res
   }
 
-  /**
-   * Use ShadyDom.observeChildren to detect children changes
-   * Use customElement attribute change hook to handle attributes
-   */
-
   function wrap(Vue, Component, delegatesFocus, css) {
       const isAsync = typeof Component === 'function' && !Component.cid;
       let isInitialized = false;
@@ -273,8 +268,10 @@ var wrapVueWebComponent = (function () {
                       for (let i = 0; i < mutations.length; i++) {
                           const m = mutations[i];
                           if (isInitialized && m.type === 'attributes' && m.target === el) {
+                              // in some browsers e.g. Edge it may happen that a mutation is triggered twice
+                              // before an attribute value is changed and after
+                              // the next if avoid syncing props when the value doesn't change
                               if (m.oldValue === el.getAttribute(m.attributeName)) {
-                                  console.log('same');
                                   return;
                               }
                               if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {
