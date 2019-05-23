@@ -223,7 +223,6 @@ function wrap(Vue, Component, delegatesFocus, css) {
                 }))
             );
             this._createWrapper();
-            this._createObserver();
         }
 
         _createObserver() {
@@ -337,58 +336,64 @@ function wrap(Vue, Component, delegatesFocus, css) {
                 this._wrapper = this._createWrapper();
             }
             const wrapper = this._wrapper;
-            if (!wrapper._isMounted) {
-                // initialize attributes
-                const syncInitialProperties = () => {
-                    wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
-                    hyphenatedPropsList.forEach(key => {
-                        syncProperty(this, key, true);
-                    });
-                };
 
-                if (isInitialized) {
-                    syncInitialProperties();
-                } else {
-                    // async & unresolved
-                    Component().then(resolved => {
-                        if (resolved.__esModule || resolved[Symbol.toStringTag] === 'Module') {
-                            resolved = resolved.default;
-                        }
-                        initialize(resolved);
-                        syncInitialProperties();
-                    });
-                }
-                // initialize children
-                wrapper.slotChildren = Object.freeze(toVNodes(
-                    wrapper.$createElement,
-                    this.childNodes
-                ));
-                this._createObserver();
-                wrapper.$mount();
-                this.shadowRoot.appendChild(wrapper.$el);
-            } else {
+            if (wrapper._isMounted) {
                 if (this.hasAttribute('keep-alive')) {
                     callHooks(this.vueComponent, 'activated');
                 } else {
                     callHooks(this.vueComponent, 'created');
                 }
+
+                return;
             }
+
+            // initialize attributes
+            const syncInitialProperties = () => {
+                wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
+                hyphenatedPropsList.forEach(key => {
+                    syncProperty(this, key, true);
+                });
+            };
+
+            if (isInitialized) {
+                syncInitialProperties();
+            } else {
+                // async & unresolved
+                Component().then(resolved => {
+                    if (resolved.__esModule || resolved[Symbol.toStringTag] === 'Module') {
+                        resolved = resolved.default;
+                    }
+                    initialize(resolved);
+                    syncInitialProperties();
+                });
+            }
+
+            // initialize children
+            wrapper.slotChildren = Object.freeze(toVNodes(
+                wrapper.$createElement,
+                this.childNodes
+            ));
+            this._createObserver();
+            wrapper.$mount();
+            this.shadowRoot.appendChild(wrapper.$el);
         }
 
         disconnectedCallback() {
             if (this.hasAttribute('keep-alive')) {
                 callHooks(this.vueComponent, 'deactivated');
-            } else {
-                this._wrapper.$destroy();
-                this._wrapper = null;
-                this._destroyObserver();
 
-                // delete all children except for the first one (the style tag)
-                const children = this.shadowRoot.childNodes;
-                for (let i = 0; i < children.length; i++) {
-                    if (children[i].tagName !== "STYLE") {
-                        this.shadowRoot.removeChild(children[i]);
-                    }
+                return;
+            }
+
+            this._wrapper.$destroy();
+            this._wrapper = null;
+            this._destroyObserver();
+
+            // delete all children except for the first one (the style tag)
+            const children = this.shadowRoot.childNodes;
+            for (let i = 0; i < children.length; i++) {
+                if (children[i].tagName !== "STYLE") {
+                    this.shadowRoot.removeChild(children[i]);
                 }
             }
         }

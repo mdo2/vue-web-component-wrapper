@@ -329,8 +329,6 @@ function wrap(Vue, Component, delegatesFocus, css) {
 
       _this3._createWrapper();
 
-      _this3._createObserver();
-
       return _this3;
     }
 
@@ -447,63 +445,66 @@ function wrap(Vue, Component, delegatesFocus, css) {
 
         var wrapper = this._wrapper;
 
-        if (!wrapper._isMounted) {
-          // initialize attributes
-          var syncInitialProperties = function syncInitialProperties() {
-            wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
-            hyphenatedPropsList.forEach(function (key) {
-              syncProperty(_this5, key, true);
-            });
-          };
-
-          if (isInitialized) {
-            syncInitialProperties();
-          } else {
-            // async & unresolved
-            Component().then(function (resolved) {
-              if (resolved.__esModule || resolved[Symbol.toStringTag] === 'Module') {
-                resolved = resolved.default;
-              }
-
-              initialize(resolved);
-              syncInitialProperties();
-            });
-          } // initialize children
-
-
-          wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, this.childNodes));
-
-          this._createObserver();
-
-          wrapper.$mount();
-          this.shadowRoot.appendChild(wrapper.$el);
-        } else {
+        if (wrapper._isMounted) {
           if (this.hasAttribute('keep-alive')) {
             callHooks(this.vueComponent, 'activated');
           } else {
             callHooks(this.vueComponent, 'created');
           }
-        }
+
+          return;
+        } // initialize attributes
+
+
+        var syncInitialProperties = function syncInitialProperties() {
+          wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
+          hyphenatedPropsList.forEach(function (key) {
+            syncProperty(_this5, key, true);
+          });
+        };
+
+        if (isInitialized) {
+          syncInitialProperties();
+        } else {
+          // async & unresolved
+          Component().then(function (resolved) {
+            if (resolved.__esModule || resolved[Symbol.toStringTag] === 'Module') {
+              resolved = resolved.default;
+            }
+
+            initialize(resolved);
+            syncInitialProperties();
+          });
+        } // initialize children
+
+
+        wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, this.childNodes));
+
+        this._createObserver();
+
+        wrapper.$mount();
+        this.shadowRoot.appendChild(wrapper.$el);
       }
     }, {
       key: "disconnectedCallback",
       value: function disconnectedCallback() {
         if (this.hasAttribute('keep-alive')) {
           callHooks(this.vueComponent, 'deactivated');
-        } else {
-          this._wrapper.$destroy();
+          return;
+        }
 
-          this._wrapper = null;
+        this._wrapper.$destroy();
 
-          this._destroyObserver(); // delete all children except for the first one (the style tag)
+        this._wrapper = null;
+
+        this._destroyObserver(); // delete all children except for the first one (the style tag)
 
 
-          var children = this.shadowRoot.childNodes;
+        var children = this.shadowRoot.childNodes;
 
-          for (var i = 0; i < children.length; i++) {
-            if (children[i].tagName !== "STYLE") {
-              this.shadowRoot.removeChild(children[i]);
-            }
+        for (var i = 0; i < children.length; i++) {
+          if (children[i].tagName !== "STYLE") {
+            this.shadowRoot.removeChild(children[i]);
           }
         }
       }
