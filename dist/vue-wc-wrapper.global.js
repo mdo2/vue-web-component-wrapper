@@ -1,414 +1,461 @@
 var wrapVueWebComponent = (function () {
-  'use strict';
+    'use strict';
 
-  const camelizeRE = /-(\w)/g;
-  const camelize = str => {
-    return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : '')
-  };
+    const camelizeRE = /-(\w)/g;
+    const camelize = (str) => {
+        return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
+    };
 
-  const hyphenateRE = /\B([A-Z])/g;
-  const hyphenate = str => {
-    return str.replace(hyphenateRE, '-$1').toLowerCase()
-  };
+    const hyphenateRE = /\B([A-Z])/g;
+    const hyphenate = (str) => {
+        return str.replace(hyphenateRE, '-$1').toLowerCase();
+    };
 
-  function getInitialProps (propsList, currProps) {
-    const res = {};
-    propsList.forEach(key => {
-      res[key] = currProps[key] || undefined;
-    });
-    return res
-  }
-
-  function injectHook (options, key, hook) {
-    options[key] = [].concat(options[key] || []);
-    options[key].unshift(hook);
-  }
-
-  function callHooks (vm, hook) {
-    if (vm) {
-      const hooks = vm.$options[hook] || [];
-      hooks.forEach(hook => {
-        hook.call(vm);
-      });
-    }
-  }
-
-  function createCustomEvent (name, args) {
-    return new CustomEvent(name, {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      detail: args
-    })
-  }
-
-  function isIgnoredAttribute (attr) {
-    return ['class', 'style', 'id', 'key', 'ref', 'slot', 'slot-scope', 'is'].indexOf(
-      attr
-    ) !== -1
-  }
-
-  const isBoolean = val => /function Boolean/.test(String(val));
-  const isNumber = val => /function Number/.test(String(val));
-
-  function convertAttributeValue (value, name, { type } = {}) {
-    if (isBoolean(type)) {
-      if (value === 'true' || value === 'false') {
-        return value === 'true'
-      }
-      if (value === '' || value === name) {
-        return true
-      }
-      return value != null
-    } else if (isNumber(type)) {
-      const parsed = parseFloat(value, 10);
-      return isNaN(parsed) ? value : parsed
-    } else {
-      return value
-    }
-  }
-
-  function toVNodes (h, children) {
-    let unnamed = false;
-    const named = {};
-    for (let i = 0, l = children.length; i < l; i++) {
-      const childSlot = children[i].getAttribute && children[i].getAttribute('slot');
-      if (childSlot && !named[childSlot]) {
-        named[childSlot] = h('slot', {
-          slot: childSlot,
-          attrs: { name: childSlot }
+    function getInitialProps(propsList, currProps) {
+        const res = {};
+        propsList.forEach((key) => {
+            res[key] = currProps[key] || undefined;
         });
-      } else if (!childSlot && !unnamed) {
-        unnamed = h('slot', null);
-      }
+        return res;
     }
-    const res = Array.from(Object.values(named));
-    if (unnamed) {
-      res.push(unnamed);
+
+    function injectHook(options, key, hook) {
+        options[key] = [].concat(options[key] || []);
+        options[key].unshift(hook);
     }
-    return res
-  }
 
-  function getNodeAttributes (node, ignoreAttributes, ignoreReserved) {
-    const res = {};
-    for (let i = 0, l = node.attributes.length; i < l; i++) {
-      const attr = node.attributes[i];
-      const name = attr.name || attr.nodeName;
-      const value = attr.value || attr.nodeValue;
-
-      if (
-        (ignoreAttributes && ignoreAttributes.indexOf(name) !== -1) &&
-        (ignoreReserved && isIgnoredAttribute(name))
-      ) {
-        continue
-      }
-
-      res[name] = value;
+    function callHooks(vm, hook) {
+        if (vm) {
+            const hooks = vm.$options[hook] || [];
+            hooks.forEach((hook) => {
+                hook.call(vm);
+            });
+        }
     }
-    return res
-  }
 
-  function wrap(Vue, Component, delegatesFocus, css) {
-      const isAsync = typeof Component === 'function' && !Component.cid;
-      let isInitialized = false;
-      let hyphenatedPropsList;
-      let camelizedPropsList;
-      let camelizedPropsMap;
+    function createCustomEvent(name, args) {
+        return new CustomEvent(name, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            detail: args,
+        });
+    }
 
-      function initialize(Component) {
-          if (isInitialized) return
+    function isIgnoredAttribute(attr) {
+        return (
+            [
+                'class',
+                'style',
+                'id',
+                'key',
+                'ref',
+                'slot',
+                'slot-scope',
+                'is',
+            ].indexOf(attr) !== -1
+        );
+    }
 
-          const options = typeof Component === 'function'
-              ? Component.options
-              : Component;
+    const isBoolean = (val) => /function Boolean/.test(String(val));
+    const isNumber = (val) => /function Number/.test(String(val));
 
-          // extract props info
-          const propsList = Array.isArray(options.props)
-              ? options.props
-              : Object.keys(options.props || {});
-          hyphenatedPropsList = propsList.map(hyphenate);
-          camelizedPropsList = propsList.map(camelize);
-          const originalPropsAsObject = Array.isArray(options.props) ? {} : options.props || {};
-          camelizedPropsMap = camelizedPropsList.reduce((map, key, i) => {
-              map[key] = originalPropsAsObject[propsList[i]];
-              return map
-          }, {});
+    function convertAttributeValue(value, name, { type } = {}) {
+        if (isBoolean(type)) {
+            if (value === 'true' || value === 'false') {
+                return value === 'true';
+            }
+            if (value === '' || value === name) {
+                return true;
+            }
+            return value != null;
+        } else if (isNumber(type)) {
+            const parsed = parseFloat(value, 10);
+            return isNaN(parsed) ? value : parsed;
+        } else {
+            return value;
+        }
+    }
 
-          // proxy $emit to native DOM events
-          injectHook(options, 'beforeCreate', function () {
-              const emit = this.$emit;
-              this.$emit = (name, ...args) => {
-                  this.$root.$options.customElement.dispatchEvent(createCustomEvent(name, args));
-                  return emit.call(this, name, ...args)
-              };
-          });
+    function toVNodes(h, children) {
+        let unnamed = false;
+        const named = {};
+        for (let i = 0, l = children.length; i < l; i++) {
+            const childSlot =
+                children[i].getAttribute && children[i].getAttribute('slot');
+            if (childSlot && !named[childSlot]) {
+                named[childSlot] = h('slot', {
+                    slot: childSlot,
+                    attrs: { name: childSlot },
+                });
+            } else if (!childSlot && !unnamed) {
+                unnamed = h('slot', null);
+            }
+        }
+        const res = Array.from(Object.values(named));
+        if (unnamed) {
+            res.push(unnamed);
+        }
+        return res;
+    }
 
-          injectHook(options, 'created', function () {
-              // sync default props values to wrapper on created
-              camelizedPropsList.forEach(key => {
-                  this.$root.props[key] = this[key];
-              });
-          });
+    function getNodeAttributes(node, ignoreAttributes, ignoreReserved) {
+        const res = {};
+        for (let i = 0, l = node.attributes.length; i < l; i++) {
+            const attr = node.attributes[i];
+            const name = attr.name || attr.nodeName;
+            const value = attr.value || attr.nodeValue;
 
-          // proxy props as Element properties
-          camelizedPropsList.forEach(key => {
-              Object.defineProperty(CustomElement.prototype, key, {
-                  get() {
-                      return this._wrapper && this._wrapper.props[key]
-                  },
-                  set(newVal) {
-                      if (this._wrapper) {
-                          this._wrapper.props[key] = newVal;
-                      }
-                      this.props[key] = newVal;
-                  },
-                  enumerable: false,
-                  configurable: true
-              });
-          });
+            if (
+                ignoreAttributes &&
+                ignoreAttributes.indexOf(name) !== -1 &&
+                (ignoreReserved && isIgnoredAttribute(name))
+            ) {
+                continue;
+            }
 
-          isInitialized = true;
-      }
+            res[name] = value;
+        }
+        return res;
+    }
 
-      function syncProperty(el, key, syncJsProp) {
-          const camelized = camelize(key);
-          let value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
+    function wrap(Vue, Component, delegatesFocus, css) {
+        const isAsync = typeof Component === 'function' && !Component.cid;
+        let isInitialized = false;
+        let hyphenatedPropsList;
+        let camelizedPropsList;
+        let camelizedPropsMap;
 
-          if (syncJsProp) {
-              if (el.props && el.props[camelized] !== undefined) {
-                  value = el.props[camelized];
-              } else {
-                  value = el[camelized] !== undefined ? el[camelized] : value;
-              }
-          }
+        function initialize(Component) {
+            if (isInitialized) return;
 
-          el._wrapper.props[camelized] = convertAttributeValue(
-              value,
-              key,
-              camelizedPropsMap[camelized]
-          );
-      }
+            const options =
+                typeof Component === 'function' ? Component.options : Component;
 
-      function syncAttribute(el, key) {
-          if (isIgnoredAttribute(key) || hyphenatedPropsList.indexOf(key) !== -1) {
-              return
-          }
+            // extract props info
+            const propsList = Array.isArray(options.props)
+                ? options.props
+                : Object.keys(options.props || {});
+            hyphenatedPropsList = propsList.map(hyphenate);
+            camelizedPropsList = propsList.map(camelize);
+            const originalPropsAsObject = Array.isArray(options.props)
+                ? {}
+                : options.props || {};
+            camelizedPropsMap = camelizedPropsList.reduce((map, key, i) => {
+                map[key] = originalPropsAsObject[propsList[i]];
+                return map;
+            }, {});
 
-          const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
-          const wrapper = el._wrapper;
+            // proxy $emit to native DOM events
+            injectHook(options, 'beforeCreate', function() {
+                const emit = this.$emit;
+                this.$emit = (name, ...args) => {
+                    this.$root.$options.customElement.dispatchEvent(
+                        createCustomEvent(name, args),
+                    );
+                    return emit.call(this, name, ...args);
+                };
+            });
 
-          if (!wrapper || !wrapper._vnode) {
-              return
-          }
+            injectHook(options, 'created', function() {
+                // sync default props values to wrapper on created
+                camelizedPropsList.forEach((key) => {
+                    this.$root.props[key] = this[key];
+                });
+            });
 
-          wrapper._update(Object.assign({}, wrapper._vnode, {
-              data: Object.assign({}, wrapper._vnode.data, {
-                  attrs: Object.assign(
-                      {},
-                      wrapper._vnode.data.attrs,
-                      { [key]: value }
-                  )
-              })
-          }), false);
-      }
+            // proxy props as Element properties
+            camelizedPropsList.forEach((key) => {
+                Object.defineProperty(CustomElement.prototype, key, {
+                    get() {
+                        return this._wrapper && this._wrapper.props[key];
+                    },
+                    set(newVal) {
+                        if (this._wrapper) {
+                            this._wrapper.props[key] = newVal;
+                        }
+                        this.props[key] = newVal;
+                    },
+                    enumerable: false,
+                    configurable: true,
+                });
+            });
 
-      class CustomElement extends HTMLElement {
-          constructor() {
-              const self = super();
-              this._el = self;
-              this.props = {};
-              const shadow = self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus });
-              css && css.forEach(promise =>
-                  promise.then(res => res.clone().text().then(content => {
-                      const style = document.createElement('style');
-                      style.appendChild(document.createTextNode(content));
-                      shadow.appendChild(style);
-                  }))
-              );
-              this._createWrapper();
-          }
+            isInitialized = true;
+        }
 
-          _createObserver() {
-              const wrapper = this._wrapper;
-              const el = this._el;
+        function syncProperty(el, key, syncJsProp) {
+            const camelized = camelize(key);
+            let value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
 
-              let mutationObserverOptions = {
-                  childList: true,
-                  subtree: true,
-                  characterData: true,
-                  attributes: true,
-                  attributeOldValue: true
-              };
+            if (syncJsProp) {
+                if (el.props && el.props[camelized] !== undefined) {
+                    value = el.props[camelized];
+                } else {
+                    value = el[camelized] !== undefined ? el[camelized] : value;
+                }
+            }
 
-              // if ShadyDOM is available we use observeChildren to detect children changes
-              // instead of MutationObserver
-              if (window.ShadyDOM && !this._shadyDOMObserver) {
-                  this._shadyDOMObserver = window.ShadyDOM.observeChildren(el, (info) => {
-                      wrapper.slotChildren = Object.freeze(toVNodes(
-                          wrapper.$createElement,
-                          el.childNodes
-                      ));
-                  });
+            el._wrapper.props[camelized] = convertAttributeValue(
+                value,
+                key,
+                camelizedPropsMap[camelized],
+            );
+        }
 
-                  mutationObserverOptions = {
-                      attributes: true,
-                      attributeOldValue: true
-                  };
-              }
+        function syncAttribute(el, key) {
+            if (
+                isIgnoredAttribute(key) ||
+                hyphenatedPropsList.indexOf(key) !== -1
+            ) {
+                return;
+            }
 
-              // Use MutationObserver to react to future attribute & slot content change
-              if (!this.observer) {
+            const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
+            const wrapper = el._wrapper;
 
-                  this.observer = new MutationObserver(mutations => {
-                      if (!this._wrapper) {
-                          return
-                      }
-                      let hasChildrenChange = false;
-                      for (let i = 0; i < mutations.length; i++) {
-                          const m = mutations[i];
-                          if (isInitialized && m.type === 'attributes' && m.target === el) {
-                              // in some browsers e.g. Edge it may happen that a mutation is triggered twice
-                              // before an attribute value is changed and after
-                              // the next if avoid syncing props when the value doesn't change
-                              if (m.oldValue === el.getAttribute(m.attributeName)) {
-                                  return;
-                              }
-                              if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {
-                                  syncProperty(el, m.attributeName);
-                              } else {
-                                  syncAttribute(el, m.attributeName);
-                              }
-                          } else {
-                              hasChildrenChange = true;
-                          }
-                      }
-                      if (hasChildrenChange && !this._shadyDOMObserver) {
-                          wrapper.slotChildren = Object.freeze(toVNodes(
-                              wrapper.$createElement,
-                              el.childNodes
-                          ));
-                      }
-                  });
-      
-                  this.observer.observe(el, mutationObserverOptions);
-              }
-          }
+            if (!wrapper || !wrapper._vnode) {
+                return;
+            }
 
-          _destroyObserver() {
-              if (this.observer) {
-                  this.observer.disconnect();
-                  this.observer = null;
-              }
-              if (window.ShadyDOM && this._shadyDOMObserver) {
-                  window.ShadyDOM.unobserveChildren(this._shadyDOMObserver);
-                  this._shadyDOMObserver = null;
-              }
-          }
+            wrapper._update(
+                Object.assign({}, wrapper._vnode, {
+                    data: Object.assign({}, wrapper._vnode.data, {
+                        attrs: Object.assign({}, wrapper._vnode.data.attrs, {
+                            [key]: value,
+                        }),
+                    }),
+                }),
+                false,
+            );
+        }
 
-          _createWrapper() {
-              const self = this;
-              const wrapper = this._wrapper = new Vue({
-                  name: 'shadow-root',
-                  inheritAttrs: false,
-                  customElement: self,
-                  shadowRoot: self.shadowRoot,
-                  data() {
-                      return {
-                          props: {},
-                          slotChildren: [],
-                          attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-                      }
-                  },
-                  render(h) {
-                      return h(Component, {
-                          ref: 'inner',
-                          props: this.props,
-                          attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-                      }, this.slotChildren)
-                  }
-              });
-              return wrapper
-          }
+        class CustomElement extends HTMLElement {
+            constructor() {
+                const self = super();
+                this._el = self;
+                this.props = {};
+                const shadow = self.attachShadow({
+                    mode: 'open',
+                    delegatesFocus: delegatesFocus,
+                });
+                css &&
+                    css.forEach((content) => {
+                        const style = document.createElement('style');
+                        style.appendChild(document.createTextNode(content));
+                        shadow.appendChild(style);
+                    });
 
-          get vueComponent() {
-              return this._wrapper.$refs.inner
-          }
+                this._createWrapper();
+            }
 
-          connectedCallback() {
-              if (!this._wrapper) {
-                  this._wrapper = this._createWrapper();
-              }
-              const wrapper = this._wrapper;
+            _createObserver() {
+                const wrapper = this._wrapper;
+                const el = this._el;
 
-              if (wrapper._isMounted) {
-                  if (this.hasAttribute('keep-alive')) {
-                      callHooks(this.vueComponent, 'activated');
-                  } else {
-                      callHooks(this.vueComponent, 'created');
-                  }
+                let mutationObserverOptions = {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                    attributes: true,
+                    attributeOldValue: true,
+                };
 
-                  return;
-              }
+                // if ShadyDOM is available we use observeChildren to detect children changes
+                // instead of MutationObserver
+                if (window.ShadyDOM && !this._shadyDOMObserver) {
+                    this._shadyDOMObserver = window.ShadyDOM.observeChildren(
+                        el,
+                        (info) => {
+                            wrapper.slotChildren = Object.freeze(
+                                toVNodes(wrapper.$createElement, el.childNodes),
+                            );
+                        },
+                    );
 
-              // initialize attributes
-              const syncInitialProperties = () => {
-                  wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
-                  hyphenatedPropsList.forEach(key => {
-                      syncProperty(this, key, true);
-                  });
-              };
+                    mutationObserverOptions = {
+                        attributes: true,
+                        attributeOldValue: true,
+                    };
+                }
 
-              if (isInitialized) {
-                  syncInitialProperties();
-              } else {
-                  // async & unresolved
-                  Component().then(resolved => {
-                      if (resolved.__esModule || resolved[Symbol.toStringTag] === 'Module') {
-                          resolved = resolved.default;
-                      }
-                      initialize(resolved);
-                      syncInitialProperties();
-                  });
-              }
+                // Use MutationObserver to react to future attribute & slot content change
+                if (!this.observer) {
+                    this.observer = new MutationObserver((mutations) => {
+                        if (!this._wrapper) {
+                            return;
+                        }
+                        let hasChildrenChange = false;
+                        for (let i = 0; i < mutations.length; i++) {
+                            const m = mutations[i];
+                            if (
+                                isInitialized &&
+                                m.type === 'attributes' &&
+                                m.target === el
+                            ) {
+                                // in some browsers e.g. Edge it may happen that a mutation is triggered twice
+                                // before an attribute value is changed and after
+                                // the next if avoid syncing props when the value doesn't change
+                                if (
+                                    m.oldValue === el.getAttribute(m.attributeName)
+                                ) {
+                                    return;
+                                }
+                                if (
+                                    hyphenatedPropsList.indexOf(m.attributeName) !==
+                                    -1
+                                ) {
+                                    syncProperty(el, m.attributeName);
+                                } else {
+                                    syncAttribute(el, m.attributeName);
+                                }
+                            } else {
+                                hasChildrenChange = true;
+                            }
+                        }
+                        if (hasChildrenChange && !this._shadyDOMObserver) {
+                            wrapper.slotChildren = Object.freeze(
+                                toVNodes(wrapper.$createElement, el.childNodes),
+                            );
+                        }
+                    });
 
-              // initialize children
-              wrapper.slotChildren = Object.freeze(toVNodes(
-                  wrapper.$createElement,
-                  this.childNodes
-              ));
-              this._createObserver();
-              wrapper.$mount();
-              this.shadowRoot.appendChild(wrapper.$el);
-          }
+                    this.observer.observe(el, mutationObserverOptions);
+                }
+            }
 
-          disconnectedCallback() {
-              if (this.hasAttribute('keep-alive')) {
-                  callHooks(this.vueComponent, 'deactivated');
+            _destroyObserver() {
+                if (this.observer) {
+                    this.observer.disconnect();
+                    this.observer = null;
+                }
+                if (window.ShadyDOM && this._shadyDOMObserver) {
+                    window.ShadyDOM.unobserveChildren(this._shadyDOMObserver);
+                    this._shadyDOMObserver = null;
+                }
+            }
 
-                  return;
-              }
+            _createWrapper() {
+                const self = this;
+                const wrapper = (this._wrapper = new Vue({
+                    name: 'shadow-root',
+                    inheritAttrs: false,
+                    customElement: self,
+                    shadowRoot: self.shadowRoot,
+                    data() {
+                        return {
+                            props: {},
+                            slotChildren: [],
+                            attrs: getNodeAttributes(
+                                self,
+                                hyphenatedPropsList,
+                                true,
+                            ),
+                        };
+                    },
+                    render(h) {
+                        return h(
+                            Component,
+                            {
+                                ref: 'inner',
+                                props: this.props,
+                                attrs: getNodeAttributes(
+                                    self,
+                                    hyphenatedPropsList,
+                                    true,
+                                ),
+                            },
+                            this.slotChildren,
+                        );
+                    },
+                }));
+                return wrapper;
+            }
 
-              this._wrapper.$destroy();
-              this._wrapper = null;
-              this._destroyObserver();
+            get vueComponent() {
+                return this._wrapper.$refs.inner;
+            }
 
-              // delete all children except for the first one (the style tag)
-              const children = this.shadowRoot.childNodes;
-              for (let i = 0; i < children.length; i++) {
-                  if (children[i].tagName !== "STYLE") {
-                      this.shadowRoot.removeChild(children[i]);
-                  }
-              }
-          }
-      }
+            connectedCallback() {
+                if (!this._wrapper) {
+                    this._wrapper = this._createWrapper();
+                }
+                const wrapper = this._wrapper;
 
-      if (!isAsync) {
-          initialize(Component);
-      }
+                if (wrapper._isMounted) {
+                    if (this.hasAttribute('keep-alive')) {
+                        callHooks(this.vueComponent, 'activated');
+                    } else {
+                        callHooks(this.vueComponent, 'created');
+                    }
 
-      return CustomElement
-  }
+                    return;
+                }
 
-  return wrap;
+                // initialize attributes
+                const syncInitialProperties = () => {
+                    wrapper.props = getInitialProps(
+                        camelizedPropsList,
+                        wrapper.props,
+                    );
+                    hyphenatedPropsList.forEach((key) => {
+                        syncProperty(this, key, true);
+                    });
+                };
+
+                if (isInitialized) {
+                    syncInitialProperties();
+                } else {
+                    // async & unresolved
+                    Component().then((resolved) => {
+                        if (
+                            resolved.__esModule ||
+                            resolved[Symbol.toStringTag] === 'Module'
+                        ) {
+                            resolved = resolved.default;
+                        }
+                        initialize(resolved);
+                        syncInitialProperties();
+                    });
+                }
+
+                // initialize children
+                wrapper.slotChildren = Object.freeze(
+                    toVNodes(wrapper.$createElement, this.childNodes),
+                );
+                this._createObserver();
+                wrapper.$mount();
+                this.shadowRoot.appendChild(wrapper.$el);
+            }
+
+            disconnectedCallback() {
+                if (this.hasAttribute('keep-alive')) {
+                    callHooks(this.vueComponent, 'deactivated');
+
+                    return;
+                }
+
+                this._wrapper.$destroy();
+                this._wrapper = null;
+                this._destroyObserver();
+
+                // delete all children except for the first one (the style tag)
+                const children = this.shadowRoot.childNodes;
+                for (let i = 0; i < children.length; i++) {
+                    if (children[i].tagName !== 'STYLE') {
+                        this.shadowRoot.removeChild(children[i]);
+                    }
+                }
+            }
+        }
+
+        if (!isAsync) {
+            initialize(Component);
+        }
+
+        return CustomElement;
+    }
+
+    return wrap;
 
 }());

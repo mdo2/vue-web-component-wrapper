@@ -10,10 +10,6 @@
 
   See caniuse.com for support on [Custom Elements v1](https://caniuse.com/#feat=custom-elementsv1) and [Shadow DOM v1](https://caniuse.com/#feat=shadowdomv1).
 
-- **Note on CSS Encapsulation When Using the Shady DOM polyfill**
-
-  It's recommended to use [CSS Modules](https://vue-loader.vuejs.org/en/features/css-modules.html) instead of `<style scoped>` in your `*.vue` files if you intend to use the Shady DOM polyfill, because it does not offer real style encapsulation like Shadow DOM does, so external stylesheets may affect your components if not using hashed class names.
-
 - **If targeting browsers that does not support ES2015:**
 
   Leverage the `dist/vue-wc-wrapper.es5.js` version of the library.
@@ -71,19 +67,9 @@ Custom events emitted on the inner Vue component are dispatched on the custom el
 
 ### Slots
 
-Slots work the same way as expected, including named slots. They also update when changed (using `MutationObserver`).
+Slots work the same way as expected, including named slots. They also update when changed (using `MutationObserver` or ShadowDom Polyfill).
 
 Scoped slots however, are not supported as they are a Vue specific concept.
-
-### Lifecycle
-
-When the custom element is removed from the document, the Vue component behaves just as if it's inside a `<keep-alive>` and its `deactivated` hook will be called. When it's inserted again, the `activated` hook will be called.
-
-If you wish to destroy the inner component, you'd have to do that explicitly:
-
-``` js
-myElement.vueComponent.$destroy()
-```
 
 ## Acknowledgments
 

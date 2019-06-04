@@ -317,14 +317,10 @@ function wrap(Vue, Component, delegatesFocus, css) {
         mode: 'open',
         delegatesFocus: delegatesFocus
       });
-      css && css.forEach(function (promise) {
-        return promise.then(function (res) {
-          return res.clone().text().then(function (content) {
-            var style = document.createElement('style');
-            style.appendChild(document.createTextNode(content));
-            shadow.appendChild(style);
-          });
-        });
+      css && css.forEach(function (content) {
+        var style = document.createElement('style');
+        style.appendChild(document.createTextNode(content));
+        shadow.appendChild(style);
       });
 
       _this3._createWrapper();
@@ -503,7 +499,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
         var children = this.shadowRoot.childNodes;
 
         for (var i = 0; i < children.length; i++) {
-          if (children[i].tagName !== "STYLE") {
+          if (children[i].tagName !== 'STYLE') {
             this.shadowRoot.removeChild(children[i]);
           }
         }

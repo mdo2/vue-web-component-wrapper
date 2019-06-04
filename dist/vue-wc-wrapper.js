@@ -1,108 +1,119 @@
 const camelizeRE = /-(\w)/g;
-const camelize = str => {
-  return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : '')
+const camelize = (str) => {
+    return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
 };
 
 const hyphenateRE = /\B([A-Z])/g;
-const hyphenate = str => {
-  return str.replace(hyphenateRE, '-$1').toLowerCase()
+const hyphenate = (str) => {
+    return str.replace(hyphenateRE, '-$1').toLowerCase();
 };
 
-function getInitialProps (propsList, currProps) {
-  const res = {};
-  propsList.forEach(key => {
-    res[key] = currProps[key] || undefined;
-  });
-  return res
-}
-
-function injectHook (options, key, hook) {
-  options[key] = [].concat(options[key] || []);
-  options[key].unshift(hook);
-}
-
-function callHooks (vm, hook) {
-  if (vm) {
-    const hooks = vm.$options[hook] || [];
-    hooks.forEach(hook => {
-      hook.call(vm);
+function getInitialProps(propsList, currProps) {
+    const res = {};
+    propsList.forEach((key) => {
+        res[key] = currProps[key] || undefined;
     });
-  }
+    return res;
 }
 
-function createCustomEvent (name, args) {
-  return new CustomEvent(name, {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    detail: args
-  })
+function injectHook(options, key, hook) {
+    options[key] = [].concat(options[key] || []);
+    options[key].unshift(hook);
 }
 
-function isIgnoredAttribute (attr) {
-  return ['class', 'style', 'id', 'key', 'ref', 'slot', 'slot-scope', 'is'].indexOf(
-    attr
-  ) !== -1
-}
-
-const isBoolean = val => /function Boolean/.test(String(val));
-const isNumber = val => /function Number/.test(String(val));
-
-function convertAttributeValue (value, name, { type } = {}) {
-  if (isBoolean(type)) {
-    if (value === 'true' || value === 'false') {
-      return value === 'true'
+function callHooks(vm, hook) {
+    if (vm) {
+        const hooks = vm.$options[hook] || [];
+        hooks.forEach((hook) => {
+            hook.call(vm);
+        });
     }
-    if (value === '' || value === name) {
-      return true
-    }
-    return value != null
-  } else if (isNumber(type)) {
-    const parsed = parseFloat(value, 10);
-    return isNaN(parsed) ? value : parsed
-  } else {
-    return value
-  }
 }
 
-function toVNodes (h, children) {
-  let unnamed = false;
-  const named = {};
-  for (let i = 0, l = children.length; i < l; i++) {
-    const childSlot = children[i].getAttribute && children[i].getAttribute('slot');
-    if (childSlot && !named[childSlot]) {
-      named[childSlot] = h('slot', {
-        slot: childSlot,
-        attrs: { name: childSlot }
-      });
-    } else if (!childSlot && !unnamed) {
-      unnamed = h('slot', null);
-    }
-  }
-  const res = Array.from(Object.values(named));
-  if (unnamed) {
-    res.push(unnamed);
-  }
-  return res
+function createCustomEvent(name, args) {
+    return new CustomEvent(name, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        detail: args,
+    });
 }
 
-function getNodeAttributes (node, ignoreAttributes, ignoreReserved) {
-  const res = {};
-  for (let i = 0, l = node.attributes.length; i < l; i++) {
-    const attr = node.attributes[i];
-    const name = attr.name || attr.nodeName;
-    const value = attr.value || attr.nodeValue;
+function isIgnoredAttribute(attr) {
+    return (
+        [
+            'class',
+            'style',
+            'id',
+            'key',
+            'ref',
+            'slot',
+            'slot-scope',
+            'is',
+        ].indexOf(attr) !== -1
+    );
+}
 
-    if (
-      (ignoreAttributes && ignoreAttributes.indexOf(name) !== -1) &&
-      (ignoreReserved && isIgnoredAttribute(name))
-    ) {
-      continue
+const isBoolean = (val) => /function Boolean/.test(String(val));
+const isNumber = (val) => /function Number/.test(String(val));
+
+function convertAttributeValue(value, name, { type } = {}) {
+    if (isBoolean(type)) {
+        if (value === 'true' || value === 'false') {
+            return value === 'true';
+        }
+        if (value === '' || value === name) {
+            return true;
+        }
+        return value != null;
+    } else if (isNumber(type)) {
+        const parsed = parseFloat(value, 10);
+        return isNaN(parsed) ? value : parsed;
+    } else {
+        return value;
     }
+}
 
-    res[name] = value;
-  }
-  return res
+function toVNodes(h, children) {
+    let unnamed = false;
+    const named = {};
+    for (let i = 0, l = children.length; i < l; i++) {
+        const childSlot =
+            children[i].getAttribute && children[i].getAttribute('slot');
+        if (childSlot && !named[childSlot]) {
+            named[childSlot] = h('slot', {
+                slot: childSlot,
+                attrs: { name: childSlot },
+            });
+        } else if (!childSlot && !unnamed) {
+            unnamed = h('slot', null);
+        }
+    }
+    const res = Array.from(Object.values(named));
+    if (unnamed) {
+        res.push(unnamed);
+    }
+    return res;
+}
+
+function getNodeAttributes(node, ignoreAttributes, ignoreReserved) {
+    const res = {};
+    for (let i = 0, l = node.attributes.length; i < l; i++) {
+        const attr = node.attributes[i];
+        const name = attr.name || attr.nodeName;
+        const value = attr.value || attr.nodeValue;
+
+        if (
+            ignoreAttributes &&
+            ignoreAttributes.indexOf(name) !== -1 &&
+            (ignoreReserved && isIgnoredAttribute(name))
+        ) {
+            continue;
+        }
+
+        res[name] = value;
+    }
+    return res;
 }
 
 function wrap(Vue, Component, delegatesFocus, css) {
@@ -113,11 +124,10 @@ function wrap(Vue, Component, delegatesFocus, css) {
     let camelizedPropsMap;
 
     function initialize(Component) {
-        if (isInitialized) return
+        if (isInitialized) return;
 
-        const options = typeof Component === 'function'
-            ? Component.options
-            : Component;
+        const options =
+            typeof Component === 'function' ? Component.options : Component;
 
         // extract props info
         const propsList = Array.isArray(options.props)
@@ -125,33 +135,37 @@ function wrap(Vue, Component, delegatesFocus, css) {
             : Object.keys(options.props || {});
         hyphenatedPropsList = propsList.map(hyphenate);
         camelizedPropsList = propsList.map(camelize);
-        const originalPropsAsObject = Array.isArray(options.props) ? {} : options.props || {};
+        const originalPropsAsObject = Array.isArray(options.props)
+            ? {}
+            : options.props || {};
         camelizedPropsMap = camelizedPropsList.reduce((map, key, i) => {
             map[key] = originalPropsAsObject[propsList[i]];
-            return map
+            return map;
         }, {});
 
         // proxy $emit to native DOM events
-        injectHook(options, 'beforeCreate', function () {
+        injectHook(options, 'beforeCreate', function() {
             const emit = this.$emit;
             this.$emit = (name, ...args) => {
-                this.$root.$options.customElement.dispatchEvent(createCustomEvent(name, args));
-                return emit.call(this, name, ...args)
+                this.$root.$options.customElement.dispatchEvent(
+                    createCustomEvent(name, args),
+                );
+                return emit.call(this, name, ...args);
             };
         });
 
-        injectHook(options, 'created', function () {
+        injectHook(options, 'created', function() {
             // sync default props values to wrapper on created
-            camelizedPropsList.forEach(key => {
+            camelizedPropsList.forEach((key) => {
                 this.$root.props[key] = this[key];
             });
         });
 
         // proxy props as Element properties
-        camelizedPropsList.forEach(key => {
+        camelizedPropsList.forEach((key) => {
             Object.defineProperty(CustomElement.prototype, key, {
                 get() {
-                    return this._wrapper && this._wrapper.props[key]
+                    return this._wrapper && this._wrapper.props[key];
                 },
                 set(newVal) {
                     if (this._wrapper) {
@@ -160,7 +174,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
                     this.props[key] = newVal;
                 },
                 enumerable: false,
-                configurable: true
+                configurable: true,
             });
         });
 
@@ -182,31 +196,35 @@ function wrap(Vue, Component, delegatesFocus, css) {
         el._wrapper.props[camelized] = convertAttributeValue(
             value,
             key,
-            camelizedPropsMap[camelized]
+            camelizedPropsMap[camelized],
         );
     }
 
     function syncAttribute(el, key) {
-        if (isIgnoredAttribute(key) || hyphenatedPropsList.indexOf(key) !== -1) {
-            return
+        if (
+            isIgnoredAttribute(key) ||
+            hyphenatedPropsList.indexOf(key) !== -1
+        ) {
+            return;
         }
 
         const value = el.hasAttribute(key) ? el.getAttribute(key) : undefined;
         const wrapper = el._wrapper;
 
         if (!wrapper || !wrapper._vnode) {
-            return
+            return;
         }
 
-        wrapper._update(Object.assign({}, wrapper._vnode, {
-            data: Object.assign({}, wrapper._vnode.data, {
-                attrs: Object.assign(
-                    {},
-                    wrapper._vnode.data.attrs,
-                    { [key]: value }
-                )
-            })
-        }), false);
+        wrapper._update(
+            Object.assign({}, wrapper._vnode, {
+                data: Object.assign({}, wrapper._vnode.data, {
+                    attrs: Object.assign({}, wrapper._vnode.data.attrs, {
+                        [key]: value,
+                    }),
+                }),
+            }),
+            false,
+        );
     }
 
     class CustomElement extends HTMLElement {
@@ -214,14 +232,17 @@ function wrap(Vue, Component, delegatesFocus, css) {
             const self = super();
             this._el = self;
             this.props = {};
-            const shadow = self.attachShadow({ mode: 'open', delegatesFocus: delegatesFocus });
-            css && css.forEach(promise =>
-                promise.then(res => res.clone().text().then(content => {
+            const shadow = self.attachShadow({
+                mode: 'open',
+                delegatesFocus: delegatesFocus,
+            });
+            css &&
+                css.forEach((content) => {
                     const style = document.createElement('style');
                     style.appendChild(document.createTextNode(content));
                     shadow.appendChild(style);
-                }))
-            );
+                });
+
             this._createWrapper();
         }
 
@@ -234,43 +255,53 @@ function wrap(Vue, Component, delegatesFocus, css) {
                 subtree: true,
                 characterData: true,
                 attributes: true,
-                attributeOldValue: true
+                attributeOldValue: true,
             };
 
             // if ShadyDOM is available we use observeChildren to detect children changes
             // instead of MutationObserver
             if (window.ShadyDOM && !this._shadyDOMObserver) {
-                this._shadyDOMObserver = window.ShadyDOM.observeChildren(el, (info) => {
-                    wrapper.slotChildren = Object.freeze(toVNodes(
-                        wrapper.$createElement,
-                        el.childNodes
-                    ));
-                });
+                this._shadyDOMObserver = window.ShadyDOM.observeChildren(
+                    el,
+                    (info) => {
+                        wrapper.slotChildren = Object.freeze(
+                            toVNodes(wrapper.$createElement, el.childNodes),
+                        );
+                    },
+                );
 
                 mutationObserverOptions = {
                     attributes: true,
-                    attributeOldValue: true
+                    attributeOldValue: true,
                 };
             }
 
             // Use MutationObserver to react to future attribute & slot content change
             if (!this.observer) {
-
-                this.observer = new MutationObserver(mutations => {
+                this.observer = new MutationObserver((mutations) => {
                     if (!this._wrapper) {
-                        return
+                        return;
                     }
                     let hasChildrenChange = false;
                     for (let i = 0; i < mutations.length; i++) {
                         const m = mutations[i];
-                        if (isInitialized && m.type === 'attributes' && m.target === el) {
+                        if (
+                            isInitialized &&
+                            m.type === 'attributes' &&
+                            m.target === el
+                        ) {
                             // in some browsers e.g. Edge it may happen that a mutation is triggered twice
                             // before an attribute value is changed and after
                             // the next if avoid syncing props when the value doesn't change
-                            if (m.oldValue === el.getAttribute(m.attributeName)) {
+                            if (
+                                m.oldValue === el.getAttribute(m.attributeName)
+                            ) {
                                 return;
                             }
-                            if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {
+                            if (
+                                hyphenatedPropsList.indexOf(m.attributeName) !==
+                                -1
+                            ) {
                                 syncProperty(el, m.attributeName);
                             } else {
                                 syncAttribute(el, m.attributeName);
@@ -280,13 +311,12 @@ function wrap(Vue, Component, delegatesFocus, css) {
                         }
                     }
                     if (hasChildrenChange && !this._shadyDOMObserver) {
-                        wrapper.slotChildren = Object.freeze(toVNodes(
-                            wrapper.$createElement,
-                            el.childNodes
-                        ));
+                        wrapper.slotChildren = Object.freeze(
+                            toVNodes(wrapper.$createElement, el.childNodes),
+                        );
                     }
                 });
-    
+
                 this.observer.observe(el, mutationObserverOptions);
             }
         }
@@ -304,7 +334,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
 
         _createWrapper() {
             const self = this;
-            const wrapper = this._wrapper = new Vue({
+            const wrapper = (this._wrapper = new Vue({
                 name: 'shadow-root',
                 inheritAttrs: false,
                 customElement: self,
@@ -313,22 +343,34 @@ function wrap(Vue, Component, delegatesFocus, css) {
                     return {
                         props: {},
                         slotChildren: [],
-                        attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-                    }
+                        attrs: getNodeAttributes(
+                            self,
+                            hyphenatedPropsList,
+                            true,
+                        ),
+                    };
                 },
                 render(h) {
-                    return h(Component, {
-                        ref: 'inner',
-                        props: this.props,
-                        attrs: getNodeAttributes(self, hyphenatedPropsList, true)
-                    }, this.slotChildren)
-                }
-            });
-            return wrapper
+                    return h(
+                        Component,
+                        {
+                            ref: 'inner',
+                            props: this.props,
+                            attrs: getNodeAttributes(
+                                self,
+                                hyphenatedPropsList,
+                                true,
+                            ),
+                        },
+                        this.slotChildren,
+                    );
+                },
+            }));
+            return wrapper;
         }
 
         get vueComponent() {
-            return this._wrapper.$refs.inner
+            return this._wrapper.$refs.inner;
         }
 
         connectedCallback() {
@@ -349,8 +391,11 @@ function wrap(Vue, Component, delegatesFocus, css) {
 
             // initialize attributes
             const syncInitialProperties = () => {
-                wrapper.props = getInitialProps(camelizedPropsList, wrapper.props);
-                hyphenatedPropsList.forEach(key => {
+                wrapper.props = getInitialProps(
+                    camelizedPropsList,
+                    wrapper.props,
+                );
+                hyphenatedPropsList.forEach((key) => {
                     syncProperty(this, key, true);
                 });
             };
@@ -359,8 +404,11 @@ function wrap(Vue, Component, delegatesFocus, css) {
                 syncInitialProperties();
             } else {
                 // async & unresolved
-                Component().then(resolved => {
-                    if (resolved.__esModule || resolved[Symbol.toStringTag] === 'Module') {
+                Component().then((resolved) => {
+                    if (
+                        resolved.__esModule ||
+                        resolved[Symbol.toStringTag] === 'Module'
+                    ) {
                         resolved = resolved.default;
                     }
                     initialize(resolved);
@@ -369,10 +417,9 @@ function wrap(Vue, Component, delegatesFocus, css) {
             }
 
             // initialize children
-            wrapper.slotChildren = Object.freeze(toVNodes(
-                wrapper.$createElement,
-                this.childNodes
-            ));
+            wrapper.slotChildren = Object.freeze(
+                toVNodes(wrapper.$createElement, this.childNodes),
+            );
             this._createObserver();
             wrapper.$mount();
             this.shadowRoot.appendChild(wrapper.$el);
@@ -392,7 +439,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
             // delete all children except for the first one (the style tag)
             const children = this.shadowRoot.childNodes;
             for (let i = 0; i < children.length; i++) {
-                if (children[i].tagName !== "STYLE") {
+                if (children[i].tagName !== 'STYLE') {
                     this.shadowRoot.removeChild(children[i]);
                 }
             }
@@ -403,7 +450,7 @@ function wrap(Vue, Component, delegatesFocus, css) {
         initialize(Component);
     }
 
-    return CustomElement
+    return CustomElement;
 }
 
 export default wrap;
