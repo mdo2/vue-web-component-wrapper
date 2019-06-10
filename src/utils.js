@@ -8,6 +8,15 @@ export const hyphenate = (str) => {
     return str.replace(hyphenateRE, '-$1').toLowerCase();
 };
 
+/**
+ * Checks if node is an element.
+ * @param {Node} node
+ * @returns {node is HTMLElement}
+ */
+export function isElement(node) {
+    return node.nodeType === Node.ELEMENT_NODE;
+}
+
 export function getInitialProps(propsList, currProps) {
     const res = {};
     propsList.forEach((key) => {

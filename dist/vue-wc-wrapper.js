@@ -118,6 +118,7 @@ function getNodeAttributes(node, ignoreAttributes, ignoreReserved) {
 
 function wrap(Vue, Component, delegatesFocus, css) {
     const isAsync = typeof Component === 'function' && !Component.cid;
+    const styleSheets = css || [];
     let isInitialized = false;
     let hyphenatedPropsList;
     let camelizedPropsList;
@@ -232,18 +233,27 @@ function wrap(Vue, Component, delegatesFocus, css) {
             const self = super();
             this._el = self;
             this.props = {};
-            const shadow = self.attachShadow({
+            this.loadedStyles = false;
+            this.attachShadow({
                 mode: 'open',
                 delegatesFocus: delegatesFocus,
             });
-            css &&
-                css.forEach((content) => {
-                    const style = document.createElement('style');
-                    style.appendChild(document.createTextNode(content));
-                    shadow.appendChild(style);
-                });
 
-            this._createWrapper();
+            if (styleSheets.length === 0) {
+                this.loadedStyles = true;
+                this._createWrapper();
+                return this;
+            }
+
+            Promise.all(styleSheets).then((styles) => {
+                this._injectStyles(styles);
+                this.loadedStyles = true;
+
+                if (this.isConnected) {
+                    this._createWrapper();
+                    this._connectComponent();
+                }
+            });
         }
 
         _createObserver() {
@@ -374,7 +384,15 @@ function wrap(Vue, Component, delegatesFocus, css) {
         }
 
         connectedCallback() {
-            if (!this._wrapper) {
+            if (!this.loadedStyles) {
+                return;
+            }
+
+            this._connectComponent();
+        }
+
+        _connectComponent() {
+            if (!this._wrapper && this.loadedStyles) {
                 this._wrapper = this._createWrapper();
             }
             const wrapper = this._wrapper;
@@ -426,20 +444,44 @@ function wrap(Vue, Component, delegatesFocus, css) {
         }
 
         disconnectedCallback() {
+            if (!this._wrapper) {
+                return;
+            }
+
             if (this.hasAttribute('keep-alive')) {
                 callHooks(this.vueComponent, 'deactivated');
-
                 return;
             }
 
             this._wrapper.$destroy();
             this._wrapper = null;
             this._destroyObserver();
+            this._cleanDomTree();
+        }
 
-            // delete all children except for the first one (the style tag)
+        /**
+         * Injects a list of css strings into the shadow dom of the
+         * component.
+         * @param {string[]} styles
+         */
+        _injectStyles(styles) {
+            styles.map((content) => {
+                const style = document.createElement('style');
+                style.appendChild(document.createTextNode(content));
+                this.shadowRoot.appendChild(style);
+            });
+        }
+
+        /**
+         * Removes all content from the web component except
+         * for the styles.
+         */
+        _cleanDomTree() {
             const children = this.shadowRoot.childNodes;
             for (let i = 0; i < children.length; i++) {
-                if (children[i].tagName !== 'STYLE') {
+                const node = children[i];
+
+                if (node.nodeName !== 'STYLE') {
                     this.shadowRoot.removeChild(children[i]);
                 }
             }

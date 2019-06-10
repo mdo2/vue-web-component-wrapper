@@ -207,6 +207,7 @@ var wrapVueWebComponent = (function () {
   Object.setPrototypeOf(_CustomElement, HTMLElement);
   function wrap(Vue, Component, delegatesFocus, css) {
     var isAsync = typeof Component === 'function' && !Component.cid;
+    var styleSheets = css || [];
     var isInitialized = false;
     var hyphenatedPropsList;
     var camelizedPropsList;
@@ -316,18 +317,32 @@ var wrapVueWebComponent = (function () {
 
         _this3._el = self;
         _this3.props = {};
-        var shadow = self.attachShadow({
+        _this3.loadedStyles = false;
+
+        _this3.attachShadow({
           mode: 'open',
           delegatesFocus: delegatesFocus
         });
-        css && css.forEach(function (content) {
-          var style = document.createElement('style');
-          style.appendChild(document.createTextNode(content));
-          shadow.appendChild(style);
+
+        if (styleSheets.length === 0) {
+          _this3.loadedStyles = true;
+
+          _this3._createWrapper();
+
+          return _possibleConstructorReturn(_this3, _assertThisInitialized(_assertThisInitialized(_this3)));
+        }
+
+        Promise.all(styleSheets).then(function (styles) {
+          _this3._injectStyles(styles);
+
+          _this3.loadedStyles = true;
+
+          if (_this3.isConnected) {
+            _this3._createWrapper();
+
+            _this3._connectComponent();
+          }
         });
-
-        _this3._createWrapper();
-
         return _this3;
       }
 
@@ -436,9 +451,18 @@ var wrapVueWebComponent = (function () {
       }, {
         key: "connectedCallback",
         value: function connectedCallback() {
+          if (!this.loadedStyles) {
+            return;
+          }
+
+          this._connectComponent();
+        }
+      }, {
+        key: "_connectComponent",
+        value: function _connectComponent() {
           var _this5 = this;
 
-          if (!this._wrapper) {
+          if (!this._wrapper && this.loadedStyles) {
             this._wrapper = this._createWrapper();
           }
 
@@ -487,6 +511,10 @@ var wrapVueWebComponent = (function () {
       }, {
         key: "disconnectedCallback",
         value: function disconnectedCallback() {
+          if (!this._wrapper) {
+            return;
+          }
+
           if (this.hasAttribute('keep-alive')) {
             callHooks(this.vueComponent, 'deactivated');
             return;
@@ -496,13 +524,42 @@ var wrapVueWebComponent = (function () {
 
           this._wrapper = null;
 
-          this._destroyObserver(); // delete all children except for the first one (the style tag)
+          this._destroyObserver();
 
+          this._cleanDomTree();
+        }
+        /**
+         * Injects a list of css strings into the shadow dom of the
+         * component.
+         * @param {string[]} styles
+         */
 
+      }, {
+        key: "_injectStyles",
+        value: function _injectStyles(styles) {
+          var _this6 = this;
+
+          styles.map(function (content) {
+            var style = document.createElement('style');
+            style.appendChild(document.createTextNode(content));
+
+            _this6.shadowRoot.appendChild(style);
+          });
+        }
+        /**
+         * Removes all content from the web component except
+         * for the styles.
+         */
+
+      }, {
+        key: "_cleanDomTree",
+        value: function _cleanDomTree() {
           var children = this.shadowRoot.childNodes;
 
           for (var i = 0; i < children.length; i++) {
-            if (children[i].tagName !== 'STYLE') {
+            var node = children[i];
+
+            if (node.nodeName !== 'STYLE') {
               this.shadowRoot.removeChild(children[i]);
             }
           }
