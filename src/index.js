@@ -10,6 +10,8 @@ import {
     isElement,
     getNodeAttributes,
     isIgnoredAttribute,
+    getSlottedId,
+    getHostId,
 } from './utils.js';
 
 export default function wrap(Vue, Component, delegatesFocus, css) {
@@ -171,7 +173,7 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                     el,
                     (info) => {
                         wrapper.slotChildren = Object.freeze(
-                            toVNodes(wrapper.$createElement, el.childNodes),
+                            toVNodes(wrapper.$createElement, el.childNodes, getSlottedId(wrapper)),
                         );
                     },
                 );
@@ -218,7 +220,7 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                     }
                     if (hasChildrenChange && !this._shadyDOMObserver) {
                         wrapper.slotChildren = Object.freeze(
-                            toVNodes(wrapper.$createElement, el.childNodes),
+                            toVNodes(wrapper.$createElement, el.childNodes, getSlottedId(wrapper)),
                         );
                     }
                 });
@@ -255,6 +257,9 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                             true,
                         ),
                     };
+                },
+                mounted() {
+                    self.setAttribute(getHostId(wrapper), '');
                 },
                 render(h) {
                     return h(
@@ -332,7 +337,7 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
 
             // initialize children
             wrapper.slotChildren = Object.freeze(
-                toVNodes(wrapper.$createElement, this.childNodes),
+                toVNodes(wrapper.$createElement, this.childNodes, getSlottedId(wrapper)),
             );
             this._createObserver();
             wrapper.$mount();

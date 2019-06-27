@@ -17,6 +17,34 @@ export function isElement(node) {
     return node.nodeType === Node.ELEMENT_NODE;
 }
 
+/**
+ * Gets the attribute name for the slotted
+ * children.
+ * @param {import('vue').default} wrapper
+ */
+export const getSlottedId = (wrapper) => {
+    return getScope(wrapper) + '-slot';
+};
+
+/**
+ * Gets the attribute name for the host.
+ * @param {import('vue').default} wrapper
+ */
+export const getHostId = (wrapper) => {
+    return getScope(wrapper) + '-slot';
+};
+
+/**
+ * Gets the scope ID from the wrapper
+ * @param {import('vue').default} wrapper
+ */
+export const getScope = (wrapper) => {
+    if (wrapper && wrapper.$children && wrapper.$children[0]) {
+        return wrapper.$children[0].$options._scopeId;
+    }
+    return 'unknown';
+};
+
 export function getInitialProps(propsList, currProps) {
     const res = {};
     propsList.forEach((key) => {
@@ -83,7 +111,7 @@ export function convertAttributeValue(value, name, { type } = {}) {
     }
 }
 
-export function toVNodes(h, children) {
+export function toVNodes(h, children, scopeId) {
     let unnamed = false;
     const named = {};
     for (let i = 0, l = children.length; i < l; i++) {
@@ -92,10 +120,10 @@ export function toVNodes(h, children) {
         if (childSlot && !named[childSlot]) {
             named[childSlot] = h('slot', {
                 slot: childSlot,
-                attrs: { name: childSlot },
+                attrs: { name: childSlot, [scopeId]: '' },
             });
         } else if (!childSlot && !unnamed) {
-            unnamed = h('slot', null);
+            unnamed = h('slot', { attrs: { [scopeId]: '' }});
         }
     }
     const res = Array.from(Object.values(named));

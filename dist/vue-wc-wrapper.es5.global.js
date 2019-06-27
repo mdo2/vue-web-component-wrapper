@@ -95,6 +95,35 @@ var wrapVueWebComponent = (function () {
   var hyphenate = function hyphenate(str) {
     return str.replace(hyphenateRE, '-$1').toLowerCase();
   };
+  /**
+   * Gets the attribute name for the slotted
+   * children.
+   * @param {import('vue').default} wrapper
+   */
+
+  var getSlottedId = function getSlottedId(wrapper) {
+    return getScope(wrapper) + '-slot';
+  };
+  /**
+   * Gets the attribute name for the host.
+   * @param {import('vue').default} wrapper
+   */
+
+  var getHostId = function getHostId(wrapper) {
+    return getScope(wrapper) + '-slot';
+  };
+  /**
+   * Gets the scope ID from the wrapper
+   * @param {import('vue').default} wrapper
+   */
+
+  var getScope = function getScope(wrapper) {
+    if (wrapper && wrapper.$children && wrapper.$children[0]) {
+      return wrapper.$children[0].$options._scopeId;
+    }
+
+    return 'unknown';
+  };
   function getInitialProps(propsList, currProps) {
     var res = {};
     propsList.forEach(function (key) {
@@ -155,7 +184,7 @@ var wrapVueWebComponent = (function () {
       return value;
     }
   }
-  function toVNodes(h, children) {
+  function toVNodes(h, children, scopeId) {
     var unnamed = false;
     var named = {};
 
@@ -165,12 +194,14 @@ var wrapVueWebComponent = (function () {
       if (childSlot && !named[childSlot]) {
         named[childSlot] = h('slot', {
           slot: childSlot,
-          attrs: {
+          attrs: _defineProperty({
             name: childSlot
-          }
+          }, scopeId, '')
         });
       } else if (!childSlot && !unnamed) {
-        unnamed = h('slot', null);
+        unnamed = h('slot', {
+          attrs: _defineProperty({}, scopeId, '')
+        });
       }
     }
 
@@ -364,7 +395,7 @@ var wrapVueWebComponent = (function () {
 
           if (window.ShadyDOM && !this._shadyDOMObserver) {
             this._shadyDOMObserver = window.ShadyDOM.observeChildren(el, function (info) {
-              wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes));
+              wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes, getSlottedId(wrapper)));
             });
             mutationObserverOptions = {
               attributes: true,
@@ -403,7 +434,7 @@ var wrapVueWebComponent = (function () {
               }
 
               if (hasChildrenChange && !_this4._shadyDOMObserver) {
-                wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes));
+                wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes, getSlottedId(wrapper)));
               }
             });
             this.observer.observe(el, mutationObserverOptions);
@@ -437,6 +468,9 @@ var wrapVueWebComponent = (function () {
                 slotChildren: [],
                 attrs: getNodeAttributes(self, hyphenatedPropsList, true)
               };
+            },
+            mounted: function mounted() {
+              self.setAttribute(getHostId(wrapper), '');
             },
             render: function render(h) {
               return h(Component, {
@@ -501,7 +535,7 @@ var wrapVueWebComponent = (function () {
           } // initialize children
 
 
-          wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, this.childNodes));
+          wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, this.childNodes, getSlottedId(wrapper)));
 
           this._createObserver();
 
