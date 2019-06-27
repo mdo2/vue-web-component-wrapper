@@ -10,6 +10,8 @@
 
   See caniuse.com for support on [Custom Elements v1](https://caniuse.com/#feat=custom-elementsv1) and [Shadow DOM v1](https://caniuse.com/#feat=shadowdomv1).
 
+  For targeting browsers that do not support CSS `:host` or `:slotted` rules (eg. Edge) you must use the vue scoped style patcher to ensure that these are modified in the same way as this wrapper expects.
+
 - **If targeting browsers that does not support ES2015:**
 
   Leverage the `dist/vue-wc-wrapper.es5.js` version of the library.
