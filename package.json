@@ -30,14 +30,19 @@
   "devDependencies": {
     "@babel/core": "^7.0.0",
     "@babel/preset-env": "^7.0.0",
+    "@types/jest": "^24.0.13",
+    "@types/webcomponents.js": "^0.6.34",
     "babel-plugin-transform-custom-element-classes": "^0.1.0",
+    "conditional-type-checks": "^1.0.1",
     "http-server": "^0.11.1",
-    "jest": "^22.1.4",
+    "jest": "^24",
     "lint-staged": "^6.1.0",
     "puppeteer": "^1.0.0",
     "rollup": "^0.65.2",
     "rollup-plugin-babel": "^4.0.3",
-    "vue": "^2.5.13",
+    "ts-jest": "^24.0.2",
+    "typescript": "^3.4.2",
+    "vue": "^2.6.10",
     "yorkie": "^1.0.3"
   },
   "eslintConfig": {
