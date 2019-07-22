@@ -22,7 +22,7 @@ const getSlottedId = (wrapper) => {
  * @param {import('vue').default} wrapper
  */
 const getHostId = (wrapper) => {
-    return getScope(wrapper) + '-slot';
+    return getScope(wrapper) + '-host';
 };
 
 /**
@@ -78,7 +78,7 @@ function isIgnoredAttribute(attr) {
             'slot',
             'slot-scope',
             'is',
-        ].indexOf(attr) !== -1
+        ].indexOf(attr) !== -1 || attr.indexOf('data-v-') !== -1
     );
 }
 

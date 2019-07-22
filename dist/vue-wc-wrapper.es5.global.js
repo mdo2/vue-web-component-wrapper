@@ -110,7 +110,7 @@ var wrapVueWebComponent = (function () {
    */
 
   var getHostId = function getHostId(wrapper) {
-    return getScope(wrapper) + '-slot';
+    return getScope(wrapper) + '-host';
   };
   /**
    * Gets the scope ID from the wrapper
@@ -152,7 +152,7 @@ var wrapVueWebComponent = (function () {
     });
   }
   function isIgnoredAttribute(attr) {
-    return ['class', 'style', 'id', 'key', 'ref', 'slot', 'slot-scope', 'is'].indexOf(attr) !== -1;
+    return ['class', 'style', 'id', 'key', 'ref', 'slot', 'slot-scope', 'is'].indexOf(attr) !== -1 || attr.indexOf('data-v-') !== -1;
   }
 
   var isBoolean = function isBoolean(val) {
