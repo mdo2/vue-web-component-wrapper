@@ -116,7 +116,13 @@ export function isShadyDom() {
 }
 
 export function createSlot(h, scopeId, name) {
-    let slot =  h('slot', { attrs: { name, [scopeId]: '' } });
+    const vnode = { attrs: { [scopeId]: '' } };
+    if (name) {
+        vnode.name = name;
+        vnode.attrs.name = name;
+    }
+
+    let slot =  h('slot', vnode);
 
     if (isShadyDom()) {
         slot = h('shady-slot', { attrs: { [scopeId]: '' }}, [slot]);
