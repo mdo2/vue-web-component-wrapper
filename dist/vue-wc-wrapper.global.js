@@ -110,7 +110,13 @@ var wrapVueWebComponent = (function () {
     }
 
     function createSlot(h, scopeId, name) {
-        let slot =  h('slot', { attrs: { name, [scopeId]: '' } });
+        const vnode = { attrs: { [scopeId]: '' } };
+        if (name) {
+            vnode.slot = name;
+            vnode.attrs.name = name;
+        }
+
+        let slot =  h('slot', vnode);
 
         if (isShadyDom()) {
             slot = h('shady-slot', { attrs: { [scopeId]: '' }}, [slot]);

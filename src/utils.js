@@ -118,7 +118,7 @@ export function isShadyDom() {
 export function createSlot(h, scopeId, name) {
     const vnode = { attrs: { [scopeId]: '' } };
     if (name) {
-        vnode.name = name;
+        vnode.slot = name;
         vnode.attrs.name = name;
     }
 
