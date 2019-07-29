@@ -40,7 +40,7 @@ export const getHostId = (wrapper) => {
  */
 export const getScope = (wrapper) => {
     if (wrapper && wrapper.$children && wrapper.$children[0]) {
-        return wrapper.$children[0].$options._scopeId;
+        return wrapper.$children[0].$options._scopeId || 'unknown';
     }
     return 'unknown';
 };
@@ -111,6 +111,20 @@ export function convertAttributeValue(value, name, { type } = {}) {
     }
 }
 
+export function isShadyDom() {
+    return !!window.ShadyDOM;
+}
+
+export function createSlot(h, scopeId, name) {
+    let slot =  h('slot', { attrs: { name, [scopeId]: '' } });
+
+    if (isShadyDom()) {
+        slot = h('shady-slot', { attrs: { [scopeId]: '' }}, [slot]);
+    }
+
+    return slot;
+}
+
 export function toVNodes(h, children, scopeId) {
     let unnamed = false;
     const named = {};
@@ -118,12 +132,9 @@ export function toVNodes(h, children, scopeId) {
         const childSlot =
             children[i].getAttribute && children[i].getAttribute('slot');
         if (childSlot && !named[childSlot]) {
-            named[childSlot] = h('slot', {
-                slot: childSlot,
-                attrs: { name: childSlot, [scopeId]: '' },
-            });
+            named[childSlot] = createSlot(h, scopeId, childSlot);
         } else if (!childSlot && !unnamed) {
-            unnamed = h('slot', { attrs: { [scopeId]: '' }});
+            unnamed = createSlot(h, scopeId);
         }
     }
     const res = Array.from(Object.values(named));

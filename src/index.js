@@ -7,7 +7,7 @@ import {
     getInitialProps,
     createCustomEvent,
     convertAttributeValue,
-    isElement,
+    isShadyDom,
     getNodeAttributes,
     isIgnoredAttribute,
     getSlottedId,
@@ -168,7 +168,7 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
 
             // if ShadyDOM is available we use observeChildren to detect children changes
             // instead of MutationObserver
-            if (window.ShadyDOM && !this._shadyDOMObserver) {
+            if (isShadyDom() && !this._shadyDOMObserver) {
                 this._shadyDOMObserver = window.ShadyDOM.observeChildren(
                     el,
                     (info) => {
@@ -234,7 +234,7 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                 this.observer.disconnect();
                 this.observer = null;
             }
-            if (window.ShadyDOM && this._shadyDOMObserver) {
+            if (isShadyDom() && this._shadyDOMObserver) {
                 window.ShadyDOM.unobserveChildren(this._shadyDOMObserver);
                 this._shadyDOMObserver = null;
             }
@@ -260,6 +260,12 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                 },
                 mounted() {
                     self.setAttribute(getHostId(wrapper), '');
+
+                    // TODO: Remove unnecessary slot children changes before components mounted.
+                    // Update with slotted ID now we're mounted
+                    wrapper.slotChildren = Object.freeze(
+                        toVNodes(wrapper.$createElement, self.childNodes, getSlottedId(wrapper)),
+                    );
                 },
                 render(h) {
                     return h(
@@ -335,10 +341,6 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                 });
             }
 
-            // initialize children
-            wrapper.slotChildren = Object.freeze(
-                toVNodes(wrapper.$createElement, this.childNodes, getSlottedId(wrapper)),
-            );
             this._createObserver();
             wrapper.$mount();
             this.shadowRoot.appendChild(wrapper.$el);

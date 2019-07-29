@@ -119,7 +119,7 @@ var wrapVueWebComponent = (function () {
 
   var getScope = function getScope(wrapper) {
     if (wrapper && wrapper.$children && wrapper.$children[0]) {
-      return wrapper.$children[0].$options._scopeId;
+      return wrapper.$children[0].$options._scopeId || 'unknown';
     }
 
     return 'unknown';
@@ -184,6 +184,24 @@ var wrapVueWebComponent = (function () {
       return value;
     }
   }
+  function isShadyDom() {
+    return !!window.ShadyDOM;
+  }
+  function createSlot(h, scopeId, name) {
+    var slot = h('slot', {
+      attrs: _defineProperty({
+        name: name
+      }, scopeId, '')
+    });
+
+    if (isShadyDom()) {
+      slot = h('shady-slot', {
+        attrs: _defineProperty({}, scopeId, '')
+      }, [slot]);
+    }
+
+    return slot;
+  }
   function toVNodes(h, children, scopeId) {
     var unnamed = false;
     var named = {};
@@ -192,16 +210,9 @@ var wrapVueWebComponent = (function () {
       var childSlot = children[i].getAttribute && children[i].getAttribute('slot');
 
       if (childSlot && !named[childSlot]) {
-        named[childSlot] = h('slot', {
-          slot: childSlot,
-          attrs: _defineProperty({
-            name: childSlot
-          }, scopeId, '')
-        });
+        named[childSlot] = createSlot(h, scopeId, childSlot);
       } else if (!childSlot && !unnamed) {
-        unnamed = h('slot', {
-          attrs: _defineProperty({}, scopeId, '')
-        });
+        unnamed = createSlot(h, scopeId);
       }
     }
 
@@ -393,7 +404,7 @@ var wrapVueWebComponent = (function () {
           }; // if ShadyDOM is available we use observeChildren to detect children changes
           // instead of MutationObserver
 
-          if (window.ShadyDOM && !this._shadyDOMObserver) {
+          if (isShadyDom() && !this._shadyDOMObserver) {
             this._shadyDOMObserver = window.ShadyDOM.observeChildren(el, function (info) {
               wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, el.childNodes, getSlottedId(wrapper)));
             });
@@ -448,7 +459,7 @@ var wrapVueWebComponent = (function () {
             this.observer = null;
           }
 
-          if (window.ShadyDOM && this._shadyDOMObserver) {
+          if (isShadyDom() && this._shadyDOMObserver) {
             window.ShadyDOM.unobserveChildren(this._shadyDOMObserver);
             this._shadyDOMObserver = null;
           }
@@ -470,7 +481,10 @@ var wrapVueWebComponent = (function () {
               };
             },
             mounted: function mounted() {
-              self.setAttribute(getHostId(wrapper), '');
+              self.setAttribute(getHostId(wrapper), ''); // TODO: Remove unnecessary slot children changes before components mounted.
+              // Update with slotted ID now we're mounted
+
+              wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, self.childNodes, getSlottedId(wrapper)));
             },
             render: function render(h) {
               return h(Component, {
@@ -532,10 +546,7 @@ var wrapVueWebComponent = (function () {
               initialize(resolved);
               syncInitialProperties();
             });
-          } // initialize children
-
-
-          wrapper.slotChildren = Object.freeze(toVNodes(wrapper.$createElement, this.childNodes, getSlottedId(wrapper)));
+          }
 
           this._createObserver();
 
