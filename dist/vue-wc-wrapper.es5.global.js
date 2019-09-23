@@ -436,7 +436,7 @@ var wrapVueWebComponent = (function () {
                   // before an attribute value is changed and after
                   // the next if avoid syncing props when the value doesn't change
                   if (m.oldValue === el.getAttribute(m.attributeName)) {
-                    return;
+                    continue;
                   }
 
                   if (hyphenatedPropsList.indexOf(m.attributeName) !== -1) {

@@ -354,7 +354,7 @@ var wrapVueWebComponent = (function () {
                                 if (
                                     m.oldValue === el.getAttribute(m.attributeName)
                                 ) {
-                                    return;
+                                    continue;
                                 }
                                 if (
                                     hyphenatedPropsList.indexOf(m.attributeName) !==

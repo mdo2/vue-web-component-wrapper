@@ -204,7 +204,7 @@ export default function wrap(Vue, Component, delegatesFocus, css) {
                             if (
                                 m.oldValue === el.getAttribute(m.attributeName)
                             ) {
-                                return;
+                                continue;
                             }
                             if (
                                 hyphenatedPropsList.indexOf(m.attributeName) !==
